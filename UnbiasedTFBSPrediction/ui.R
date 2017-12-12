@@ -11,15 +11,16 @@ list.of.packages <- c("shiny", "shinycssloaders",
                       "magrittr",
                       "parallel", 
                       "TxDb.Hsapiens.UCSC.hg19.knownGene",
-                      "TxDb.Mmusculus.UCSC.mm9.knownGene",
+                      "BSgenome.Hsapiens.UCSC.hg19",
                       "org.Hs.eg.db",
-                      "org.Mm.eg.db")
+                      "TFBSTools",
+                      "JASPAR2016")
 
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 ## try http:// if https:// URLs are not supported
 source("https://bioconductor.org/biocLite.R")
 if(length(new.packages)) BiocInstaller::biocLite(new.packages)
- #################################
+#################################
 ######Code that needs to be run once
 #######################################
 
@@ -28,12 +29,10 @@ library(shinycssloaders)
 library(shinydashboard)
 library(gridExtra)
 
-UniqueTable<-readRDS("~/Desktop/Unbiased TFBS Prediction/DataFiles/ChromHMM/human/EpigneomicEnvironmentToCellTypeConverter")
-
 dashboardPage(
-  dashboardHeader(title = "ARX Genome Browser"),
+  dashboardHeader(title = "TFBS prediction and Genome Browser"),
   dashboardSidebar(
-    numericInput(inputId= "MatchPercentage",label = "Match percentage of the PWM",value = 80, min = 0, max= 100),
+    numericInput(inputId= "MatchPercentage", label = "Match percentage of the PWM",value = 95, min = 0, max= 100),
     selectizeInput(inputId= "TranscriptionFactorPWM", label = "Transcription Factor",choices = list("Arnt",
                                                                                                     "Ahr::Arnt",
                                                                                                     "br",
@@ -1115,7 +1114,7 @@ dashboardPage(
                                                                                                     "ARALYDRAFT_495258",
                                                                                                     "ARALYDRAFT_496250",
                                                                                                     "ARALYDRAFT_493022",
-                                                                                                    "ARALYDRAFT_484486"), selected= "Arx" ),
+                                                                                                    "ARALYDRAFT_484486"), selected= "Arnt" ),
     checkboxInput("Conserved", label = "Identify Conserved Motifs In Promoters", value = TRUE),
     selectizeInput("CellTypeToPredict", label = "Cell Type/ Epigenomic Environment",choices = list("H1 Cell Line"="E003",
                                                                                                 "H1 BMP4 Derived Mesendoderm Cultured Cells"="E004",

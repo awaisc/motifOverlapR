@@ -7,27 +7,18 @@
 #    http://shiny.rstudio.com/
 #
 
-library(shiny)
-library(gridExtra)
-library(Gviz)
-library(GenomicInteractions)
-library(rtracklayer)
-library(magrittr)
-library(parallel)
-library(TxDb.Hsapiens.UCSC.hg19.knownGene)
-library(TxDb.Mmusculus.UCSC.mm9.knownGene)
-library(org.Hs.eg.db)
-library(org.Mm.eg.db)
-library(BSgenome.Hsapiens.UCSC.hg19)
-library(JASPAR2016)
-library(TFBSTools)
-
+require(shiny)
+require(Gviz)
+require(GenomicInteractions)
+require(magrittr)
+require(TxDb.Hsapiens.UCSC.hg19.knownGene)
+require(org.Hs.eg.db)
+require(BSgenome.Hsapiens.UCSC.hg19)
 require(readxl)
 require(dplyr)
 require(tidyr)
 require(JASPAR2016)
 require(TFBSTools)
-require(Gviz)
 
 
 
@@ -49,15 +40,15 @@ shinyServer(function(input, output) {
      ###Data Inputs
      #######################################
      #Enhancers
-     EnhancersHuman<-import("~/Desktop/Unbiased TFBS Prediction/DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
+     EnhancersHuman<-import("/media/awais/WIndows 10/Unbiased TFBS Prediction/DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
      
      assign("EnhancersHuman", EnhancersHuman, .GlobalEnv)
      
-     ConservedRegionsInPromoters<-readRDS("~/Desktop/Unbiased TFBS Prediction/DataFiles/Conserved Region/Human/PromoterConservedRegions")
+     ConservedRegionsInPromoters<-readRDS("/media/awais/WIndows 10/Unbiased TFBS Prediction/DataFiles/Conserved Region/Human/PromoterConservedRegions")
      assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
      
      ##Importing Bed File with Granges
-     promoterTracks <- read.delim("~/Downloads/hg19WithNames.bed")%>%
+     promoterTracks <- read.delim("/media/awais/NewDrivewho/Downloads/hg19bedWithNames.bed.gz")%>%
        makeGRangesFromDataFrame(
          keep.extra.columns=TRUE,
          ignore.strand=FALSE,
@@ -91,7 +82,7 @@ shinyServer(function(input, output) {
      assign("TranscriptionFactorPWM", TranscriptionFactorPWM, .GlobalEnv)
      
      
-     matrix<-PFMatrixList[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix
+     matrix<-PFMatrixList[[paste0(TranscriptionFactorPWM)]]@profileMatrix
      
      genomicLocationOfMotifs<-matchPWM(matrix, 
                                 BSgenome.Hsapiens.UCSC.hg19,
