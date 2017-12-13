@@ -19,6 +19,7 @@ require(dplyr)
 require(tidyr)
 require(JASPAR2016)
 require(TFBSTools)
+require(readr)
 
 
 
@@ -40,11 +41,11 @@ shinyServer(function(input, output) {
      ###Data Inputs
      #######################################
      #Enhancers
-     EnhancersHuman<-import("/media/awais/WIndows 10/Unbiased TFBS Prediction/DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
+     EnhancersHuman<-import("DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
      
      assign("EnhancersHuman", EnhancersHuman, .GlobalEnv)
      
-     ConservedRegionsInPromoters<-readRDS("/media/awais/WIndows 10/Unbiased TFBS Prediction/DataFiles/Conserved Region/Human/PromoterConservedRegions")
+     ConservedRegionsInPromoters<-readRDS("DataFiles/Conserved Region/Human/PromoterConservedRegions")
      assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
      
      ##Importing Bed File with Granges
@@ -63,6 +64,14 @@ shinyServer(function(input, output) {
      
      ### Pipe line for identifying potential TFBS
      
+     ### Enhancer sites
+     #To do this, we took the CAGE TSS-enhancer assoication off of Fantom5 Database to identify what genes are 
+     #Regulated by these motifs in enhancer regions
+     
+     #Read in the table
+     EnhancerPromoterAssoications <-read_delim("/media/awais/NewDrivewho/UnbiasedTFBSPrediction/Unbiased TFBS Prediction/DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt", 
+                                               "\t", escape_double = FALSE, trim_ws = TRUE)
+     assign("EnhancerPromoterAssoications", EnhancerPromoterAssoications, .GlobalEnv)
      
      
      ### Extract PWM and give them a name from the JASPAR database
@@ -123,8 +132,8 @@ shinyServer(function(input, output) {
      
      
      ###### FIND a way to donwload the file off of Epigenomics road map using download base function 
-     chromatinState<-import(paste0( "~/Downloads/all.dense.browserFiles/", 
-                                    dir("~/Downloads/all.dense.browserFiles/", 
+     chromatinState<-import(paste0( "../all.dense.browserFiles/", 
+                                    dir("../all.dense.browserFiles/", 
                                         pattern = CellTypeToPredict
                                     )
      )
@@ -162,40 +171,33 @@ shinyServer(function(input, output) {
      
      
      #Overlap the promoter regions of genes with unbiased motifs returning promoters with a predicted TFBS
-     promoterTranscriptionFactors<-subsetByOverlaps(promoterTracks,
-                                                    UnbiasedPredictedMotifs$Promoters)
-     #Dedupilicate based on gene symbol name
-     GenesWithAMotifInThePromoter<-promoterTranscriptionFactors[!duplicated(promoterTranscriptionFactors$hg19.kgXref.geneSymbol)]
-  
+     PromoterGrange<-(UnbiasedPredictedMotifs$Promoters[findOverlaps(promoterTracks,
+                                                    UnbiasedPredictedMotifs$Promoters)%>%subjectHits()])
      
-     ### Enhancer sites
-     #To do this, we took the CAGE TSS-enhancer assoication off of Fantom5 Database to identify what genes are 
-     #Regulated by these motifs in enhancer regions
+     PromoterDataFrame<-cbind.data.frame("Gene Regulated"=promoterTracks$hg19.kgXref.geneSymbol[findOverlaps(promoterTracks,
+                                                    UnbiasedPredictedMotifs$Promoters)%>%queryHits()],
+      mcols(UnbiasedPredictedMotifs$Promoters[findOverlaps(promoterTracks,
+                                                    UnbiasedPredictedMotifs$Promoters)%>%subjectHits()]))
      
-     #Read in the table
-     EnhancerPromoterAssoications <- read.delim("~/Downloads/human.associations.hdr.txt")
+     mcols(PromoterGrange) <- PromoterDataFrame
      
-     assign("EnhancerPromoterAssoications", EnhancerPromoterAssoications, .GlobalEnv)
+     PromotersAssoicatedWithEnhancers<-separate(EnhancerPromoterAssoications, col=promoter, into= c("promoter", "strand"), sep= ',')%>%
+     separate(., col= promoter, into= c("chr", "start", "end"))%>%makeGRangesFromDataFrame()
+     
+     PromotersAssoicatedWithEnhancersList<-(promoterTracks$hg19.kgXref.geneSymbol[findOverlaps(PromotersAssoicatedWithEnhancers,
+                                                                                               PromotersAssoicatedWithEnhancers)%>%queryHits()])
+     
+     EnhancerGrangeWithTargets<-EnhancerPromoterAssoications$enhancer%>%GRanges()
+     
+     mcols(EnhancerGrangeWithTargets)<-EnhancerPromoterAssoications[3:6]
+     
+     
+     
+     EnhancerGrangeWithTargets <- subset(EnhancerGrangeWithTargets, `FDR`!=0 & `FDR`<0.05)
      
      #Split the colulmn with the enhancer information and make it into a GRange object that we overlap with our unbaised enhancer results
      
-     PredictedEnhancerTargets<-separate(EnhancerPromoterAssoications,
-                                col =promoter, 
-                                into = c("p", "gene"))%>%select(.,c("enhancer", "gene","cor", "fdr","distance"))%>%
-       separate(., col=enhancer, into= c("chromosome", 
-                                         "start",
-                                         "end"))%>%
-       makeGRangesFromDataFrame(.,
-                                keep.extra.columns=TRUE,
-                                ignore.strand=TRUE,
-                                seqinfo=NULL,
-                                seqnames.field="chromosome",
-                                start.field="start",
-                                end.field="end",
-                                starts.in.df.are.0based=FALSE)%>%subset(.,
-                                                                        fdr<=0.05 & fdr!=0.000000e+00 )%>%subsetByOverlaps(. ,
-                                                                                                                           UnbiasedPredictedMotifs$Enhancers)
-     
+
      assign("PredictedEnhancerTargets", PredictedEnhancerTargets, .GlobalEnv)
      
      #Gene the gene list from this GRANGE
