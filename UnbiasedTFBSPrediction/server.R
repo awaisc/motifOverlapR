@@ -20,7 +20,7 @@ require(tidyr)
 require(JASPAR2016)
 require(TFBSTools)
 require(readr)
-
+require(AnnotationHub)
 
 
 
@@ -62,18 +62,23 @@ shinyServer(function(input, output) {
      assign("promoterTracks", promoterTracks, .GlobalEnv)
      
      
+     
+     ###################################
+     ###Promoter Enhancer assoication data table Input
+     ###################################
+         #Read in the table
+     EnhancerPromoterAssoications <-read_delim("/media/awais/NewDrivewho/UnbiasedTFBSPrediction/Unbiased TFBS Prediction/DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt", 
+                                               "\t", escape_double = FALSE, trim_ws = TRUE)
+     assign("EnhancerPromoterAssoications", EnhancerPromoterAssoications, .GlobalEnv)
+     
+      
      ### Pipe line for identifying potential TFBS
      
      ### Enhancer sites
      #To do this, we took the CAGE TSS-enhancer assoication off of Fantom5 Database to identify what genes are 
      #Regulated by these motifs in enhancer regions
      
-     #Read in the table
-     EnhancerPromoterAssoications <-read_delim("/media/awais/NewDrivewho/UnbiasedTFBSPrediction/Unbiased TFBS Prediction/DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt", 
-                                               "\t", escape_double = FALSE, trim_ws = TRUE)
-     assign("EnhancerPromoterAssoications", EnhancerPromoterAssoications, .GlobalEnv)
-     
-     
+
      ### Extract PWM and give them a name from the JASPAR database
      PFMatrixList <- getMatrixSet(JASPAR2016, list() )
      namedJasparDataBase<-lapply(1:length(PFMatrixList), function(x){
@@ -128,20 +133,19 @@ shinyServer(function(input, output) {
      CellTypeToPredict<-input$CellTypeToPredict
      
      assign("CellTypeToPredict", CellTypeToPredict, .GlobalEnv )
+
+     ### Download the Chromatin state file From the annotation hub
+
+     epiFiles <- query(ah, c(paste0(CellTypeToPredict,"_15_coreMarks_mnemonics"), "EpigenomeRoadMap") )
+     
+     chromatinState<-epiFiles[[paste0("AH", epiFiles@.db_uid)]]
      
      
-     
-     ###### FIND a way to donwload the file off of Epigenomics road map using download base function 
-     chromatinState<-import(paste0( "../all.dense.browserFiles/", 
-                                    dir("../all.dense.browserFiles/", 
-                                        pattern = CellTypeToPredict
-                                    )
-     )
-     )
+     #Assign the bedfile to the global environment for analysis later on downstream
      
      assign("chromatinState", chromatinState, .GlobalEnv)
      
-     ## Subsetting the Chromatin states for active states
+     ## Subsetting the Chromatin states for active states to identify motifs in these regions
      ActiveChromatinStates<-c("10_TssBiv",
                               "7_Enh",
                               "1_TssA",
@@ -155,7 +159,7 @@ shinyServer(function(input, output) {
                               "3_TxFlnk")
      
      
-     ActiveChromatinRegions<-chromatinState[chromatinState$name %in% ActiveChromatinStates,]
+     ActiveChromatinRegions<-chromatinState[chromatinState$abbr %in% ActiveChromatinStates,]
      
      #Overlap active reginos with motifs in CRMs giving us a completely unbiased set of results
      UnbiasedPredictedMotifs<-lapply(MotifsInPromotersAndEnhancers,function(x){subsetByOverlaps( x,
@@ -163,9 +167,9 @@ shinyServer(function(input, output) {
      
      assign("UnbiasedPredictedMotifs", UnbiasedPredictedMotifs, .GlobalEnv )
 
-     ######################################
-     ###Left Join with differentialy expressed gene list
-     #######################################
+     ###################################################
+     ###Assigning Gene targets to eac motif based on the assoication of the CRM it is located within. 
+     ####################################################
      
      ### First we identify the genes that are regulated by our unbiased predicted results using genomic annotation 
      
@@ -184,8 +188,6 @@ shinyServer(function(input, output) {
      PromotersAssoicatedWithEnhancers<-separate(EnhancerPromoterAssoications, col=promoter, into= c("promoter", "strand"), sep= ',')%>%
      separate(., col= promoter, into= c("chr", "start", "end"))%>%makeGRangesFromDataFrame()
      
-     PromotersAssoicatedWithEnhancersList<-(promoterTracks$hg19.kgXref.geneSymbol[findOverlaps(PromotersAssoicatedWithEnhancers,
-                                                                                               PromotersAssoicatedWithEnhancers)%>%queryHits()])
      
      EnhancerGrangeWithTargets<-EnhancerPromoterAssoications$enhancer%>%GRanges()
      
