@@ -62,7 +62,9 @@ shinyServer(function(input, output) {
      assign("promoterTracks", promoterTracks, .GlobalEnv)
      
      
+     # Epigenomic Chromatin state 
      
+     ah<-AnnotationHub()
      ###################################
      ###Promoter Enhancer assoication data table Input
      ###################################
@@ -175,23 +177,28 @@ shinyServer(function(input, output) {
      
      
      #Overlap the promoter regions of genes with unbiased motifs returning promoters with a predicted TFBS
-     PromoterGrange<-(UnbiasedPredictedMotifs$Promoters[findOverlaps(promoterTracks,
-                                                    UnbiasedPredictedMotifs$Promoters)%>%subjectHits()])
+     OverlappingRangeOfMOtifsInPromoters<-findOverlaps(promoterTracks, UnbiasedPredictedMotifs$Promoters)
      
-     PromoterDataFrame<-cbind.data.frame("Gene Regulated"=promoterTracks$hg19.kgXref.geneSymbol[findOverlaps(promoterTracks,
-                                                    UnbiasedPredictedMotifs$Promoters)%>%queryHits()],
-      mcols(UnbiasedPredictedMotifs$Promoters[findOverlaps(promoterTracks,
-                                                    UnbiasedPredictedMotifs$Promoters)%>%subjectHits()]))
+     unbiasedPromoterMotifs<-UnbiasedPredictedMotifs$Promoters[OverlappingRangeOfMOtifsInPromoters%>%subjectHits()]
      
-     mcols(PromoterGrange) <- PromoterDataFrame
+     
+     mcols(unbiasedPromoterMotifs)<- cbind.data.frame(mcols(unbiasedPromoterMotifs),
+                                                      "Genes Regulated" = promoterTracks[OverlappingRangeOfMOtifsInPromoters%>%queryHits()]$hg19.kgXref.geneSymbol)
+   
+     
+     ## Now lets get the promoters of genes regulated by motifs in enhancres
+     
      
      PromotersAssoicatedWithEnhancers<-separate(EnhancerPromoterAssoications, col=promoter, into= c("promoter", "strand"), sep= ',')%>%
-     separate(., col= promoter, into= c("chr", "start", "end"))%>%makeGRangesFromDataFrame()
+     separate(., col= promoter, into= c("chr", "start", "end"))%>%makeGRangesFromDataFrame(keep.extra.columns = FALSE)
+     
+     
+     
      
      
      EnhancerGrangeWithTargets<-EnhancerPromoterAssoications$enhancer%>%GRanges()
      
-     mcols(EnhancerGrangeWithTargets)<-EnhancerPromoterAssoications[3:6]
+     mcols(EnhancerGrangeWithTargets)<-cbind.data.frame("Promoters"=PromotersAssoicatedWithEnhancers , EnhancerPromoterAssoications[3:6]) 
      
      
      
