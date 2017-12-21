@@ -41,11 +41,11 @@ shinyServer(function(input, output) {
      ###Data Inputs
      #######################################
      #Enhancers
-     EnhancersHuman<-import("DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
+     EnhancersHuman<-import("/media/awais/NewDrivewho/UnbiasedTFBSPrediction/Unbiased TFBS Prediction/DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
      
      assign("EnhancersHuman", EnhancersHuman, .GlobalEnv)
      
-     ConservedRegionsInPromoters<-readRDS("DataFiles/Conserved Region/Human/PromoterConservedRegions")
+     ConservedRegionsInPromoters<-readRDS("/media/awais/NewDrivewho/UnbiasedTFBSPrediction/Unbiased TFBS Prediction/DataFiles/Conserved Region/Human/PromoterConservedRegions")
      assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
      
      ##Importing Bed File with Granges
@@ -73,7 +73,36 @@ shinyServer(function(input, output) {
                                                "\t", escape_double = FALSE, trim_ws = TRUE)
      assign("EnhancerPromoterAssoications", EnhancerPromoterAssoications, .GlobalEnv)
      
-      
+     
+     
+     PromotersAssoicatedWithEnhancers<-separate(EnhancerPromoterAssoications, col=promoter, into= c("promoter", "strand"), sep= ',')%>%
+       separate(., col= promoter, into= c("chr", "start", "end"))%>%makeGRangesFromDataFrame(keep.extra.columns = TRUE)
+     
+     
+     
+     
+     
+     EnhancerGrangeWithTargets<-EnhancerPromoterAssoications$enhancer%>%GRanges()
+     
+     mcols(EnhancerGrangeWithTargets)<-PromotersAssoicatedWithEnhancers
+     
+     
+     EnhancerGrangeWithTargetsSiginificant <- subset(EnhancerGrangeWithTargets, `FDR`!=0 & `FDR`<0.05)
+     
+     
+     IntersectBetweenOverlappingPromoterRanges<-findOverlaps(EnhancerGrangeWithTargetsSiginificant$X, promoterTracks)
+     
+     GenesRegulatedByEnhancers<-promoterTracks$hg19.kgXref.geneSymbol[IntersectBetweenOverlappingPromoterRanges%>%subjectHits()]
+     
+     EnhancersWithGeneTargetsGrange<-EnhancerGrangeWithTargetsSiginificant[IntersectBetweenOverlappingPromoterRanges%>%queryHits()]
+     
+     mcols(EnhancersWithGeneTargetsGrange) <- cbind.data.frame(mcols(EnhancersWithGeneTargetsGrange),GenesRegulatedByEnhancers)
+     mcols(EnhancersWithGeneTargetsGrange) <- mcols(EnhancersWithGeneTargetsGrange)[11:16] 
+     
+     #We cn use this to identify targets of motifs in enhancer regions
+     assign("EnhancersWithGeneTargetsGrange", EnhancersWithGeneTargetsGrange, .GlobalEnv)
+     
+     
      ### Pipe line for identifying potential TFBS
      
      ### Enhancer sites
@@ -187,38 +216,22 @@ shinyServer(function(input, output) {
    
      
      ## Now lets get the promoters of genes regulated by motifs in enhancres
+     OverlappingRangeEnhancersMotifs<-findOverlaps(EnhancersWithGeneTargetsGrange, UnbiasedPredictedMotifs$Enhancers)
+     
+     EnhancerTargets<-EnhancersWithGeneTargetsGrange$GenesRegulatedByEnhancers[OverlappingRangeEnhancersMotifs%>%queryHits()]
+     
+     MotifsInEnhancers<- UnbiasedPredictedMotifs$Enhancers[OverlappingRangeEnhancersMotifs%>%subjectHits()]
+     
+     mcols(MotifsInEnhancers)<- cbind.data.frame(mcols(MotifsInEnhancers), "Genes Regulated" = EnhancerTargets)
      
      
-     PromotersAssoicatedWithEnhancers<-separate(EnhancerPromoterAssoications, col=promoter, into= c("promoter", "strand"), sep= ',')%>%
-     separate(., col= promoter, into= c("chr", "start", "end"))%>%makeGRangesFromDataFrame(keep.extra.columns = FALSE)
+     UnbiasedMotifsPredicted<-c("Promoters With Gene Targets" = unbiasedPromoterMotifs,
+                                "Enhancers With Gene Targets" = MotifsInEnhancers)
+     
+     assign("UnbiasedMotifsPredicted", UnbiasedMotifsPredicted, .GlobalEnv)
      
      
-     
-     
-     
-     EnhancerGrangeWithTargets<-EnhancerPromoterAssoications$enhancer%>%GRanges()
-     
-     mcols(EnhancerGrangeWithTargets)<-cbind.data.frame("Promoters"=PromotersAssoicatedWithEnhancers , EnhancerPromoterAssoications[3:6]) 
-     
-     
-     
-     EnhancerGrangeWithTargets <- subset(EnhancerGrangeWithTargets, `FDR`!=0 & `FDR`<0.05)
-     
-     #Split the colulmn with the enhancer information and make it into a GRange object that we overlap with our unbaised enhancer results
-     
-
-     assign("PredictedEnhancerTargets", PredictedEnhancerTargets, .GlobalEnv)
-     
-     #Gene the gene list from this GRANGE
-     GenesWithAMotifInTheEnhancer <- PredictedEnhancerTargets[!duplicated(PredictedEnhancerTargets$gene)]
-     
-     
-     #Combine them so we can overlap with Differenitally expressed genes
-     DirectTargets<-list("Promoter Direct Targets" =GenesWithAMotifInThePromoter, 
-                         "Enhancer Direct Targets"= GenesWithAMotifInTheEnhancer)
-     
-     
-     assign("DirectTargets", DirectTargets, .GlobalEnv)
+  
      
      
      #######################################################
@@ -232,22 +245,22 @@ shinyServer(function(input, output) {
        
        assign("differenitallyExpressedGenesList", differenitallyExpressedGenesList, .GlobalEnv)
        
-       ## Genes who showed differenital expression with enhancer targets
-       enhancerTargetsOfTF<-subset(DirectTargets$`Enhancer Direct Targets`, 
-                                   gene %in% differenitallyExpressedGenesList) 
+       ## Genes who showed differenital expression with an enhancer that was correlated with its expression
+       enhancerTargetsOfTF<-subset(UnbiasedMotifsPredicted$`Enhancers With Gene Targets`,  
+                                   `Genes Regulated` %in% differenitallyExpressedGenesList) 
        
        
        ##Genes who showed differenital expression with promoter targets
-       promoterTargetsOfTF<-subset(DirectTargets$`Promoter Direct Targets`,
-                                   hg19.kgXref.geneSymbol %in% differenitallyExpressedGenesList) 
+       promoterTargetsOfTF<-subset(UnbiasedMotifsPredicted$`Promoters With Gene Targets` ,
+                                   `Genes Regulated` %in% differenitallyExpressedGenesList) 
        
        
        
        ##Predicted Sites in the Regulatory Elements of these genes
        
        
-       returnObjectDifferentialSites<-c("Promoter Predicted Sites" = subsetByOverlaps(UnbiasedPredictedMotifs$Promoters, promoterTargetsOfTF),
-                       "Enhancer Predicted Sites" = subsetByOverlaps(UnbiasedPredictedMotifs$Enhancers, enhancerTargetsOfTF))%>%unlist()
+       returnObjectDifferentialSites<-c("Promoter Predicted Sites" = promoterTargetsOfTF,
+                       "Enhancer Predicted Sites" = enhancerTargetsOfTF)%>%unlist()
                       
        GenomeBrowserBiasedSites<-c(returnObjectDifferentialSites$`Promoter Predicted Sites`,
                                    returnObjectDifferentialSites$`Enhancer Predicted Sites`)%>%unlist()
@@ -262,8 +275,8 @@ shinyServer(function(input, output) {
        
        
        returnObjectUnbaised<-c(
-         "Promoter Predicted Sites"= UnbiasedPredictedMotifs$Promoters,
-         "Enhancer Predicted Sites"= UnbiasedPredictedMotifs$Enhancers)%>%unlist()
+         "Promoter Predicted Sites"= UnbiasedMotifsPredicted$`Enhancers With Gene Targets`,
+         "Enhancer Predicted Sites"= UnbiasedMotifsPredicted$`Promoters With Gene Targets` )%>%unlist()
        
        assign("returnObjectUnbaised", returnObjectUnbaised, .GlobalEnv)
         
@@ -292,19 +305,6 @@ shinyServer(function(input, output) {
       ################################################
       
       
-    
-      PredictedTFBSTrack<-PredictedTFBS%>%AnnotationTrack(genome = "hg19", 
-                                                          stacking = "dense",
-                                                          strand= "*",
-                                                          col.line="black",
-                                                          name="Predicted TFBS")
-     
-      
-      
-      assign("PredictedTFBSTrack", PredictedTFBSTrack, .GlobalEnv)
-    
-      
-      
       
       ##ChromHMM Track Generator specifically for humans
       chromHMMTrackGenerator<-function (gen = "hg19",
@@ -315,15 +315,16 @@ shinyServer(function(input, output) {
                                         featureDisplay = featureDisplay, 
                                         colorcase = "roadmap15") 
       {
-        desiredRegion <- subset(get(bedFile), end > from & 
+        desiredRegion <- subset(bedFile, end > from & 
                                   start < to & seqnames == chr)
+        
         track <- AnnotationTrack(desiredRegion, 
                                  stacking = "dense",
                                  col.line="black",
                                  feature = (mcols(desiredRegion))$name,
                                  genome = "hg19",
                                  strand= "*",
-                                 name = paste(bedFile))
+                                 name = "Cell Type Selected")
         
         displayPars(track) <- list(`1_TssA` = "#FF0000", `2_TssAFlnk` = "#FF6E00", 
                                    `3_TxFlnk` = "#32CD32", `4_Tx` = "#008000", `5_TxWk` = "#006400", 
@@ -335,13 +336,13 @@ shinyServer(function(input, output) {
         return(track)
       }
       
-      chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
-                                                  chr= input$chrM, 
-                                                  from  = input$fromM,
-                                                  to = input$toM,
-                                                  bedFile = chromatinState,
-                                                  featureDisplay = "all",
-                                                  colorcase='roadmap15')
+      assign("chromHMMTrackGenerator", chromHMMTrackGenerator, .GlobalEnv)
+      
+      CageExpressionGenomicIntearctions <- readRDS(file = "/media/awais/NewDrivewho/UnbiasedTFBSPrediction/Unbiased TFBS Prediction/DataFiles/Interactions/Human/EnhancerPromoterAssoicationRObject")
+      
+      IntearctionTrack<-CageExpressionGenomicIntearctions%>%InteractionTrack()
+      
+      assign("IntearctionTrack", IntearctionTrack, .GlobalEnv)
       
       # Gene Track with symbols :D
       knownGenes <- GeneRegionTrack(TxDb.Hsapiens.UCSC.hg19.knownGene, 
@@ -356,44 +357,73 @@ shinyServer(function(input, output) {
                                multiVals = "first"))
       
       symbol(knownGenes) <- symbols[gene(knownGenes)]
-      
+
+  assign("knownGenes", knownGenes, .GlobalEnv)
+  
+
+  
       #Promoter and Enhancer Tracks for each chormosome Track
-      promotertrackChromosomeSpecific<-promoterTracks%>%subset(. , 
+      promotertrackChromosomeSpecific <- promoterTracks%>%subset(. , 
                                                                seqnames==input$chrM)%>%AnnotationTrack(., name= "PromoterTrack", 
                                                                                                        genome="hg19")
-      geneTrackChromosomeSpecific<-knownGenes
-      EnhancersHumanChromosomeSpecific<-EnhancersHuman%>%subset(. ,
+      geneTrackChromosomeSpecific <- knownGenes
+      
+      
+      
+      EnhancersHumanChromosomeSpecific <- EnhancersHuman%>%subset(. ,
                                                                 seqnames==input$chrM)%>%AnnotationTrack(., name = "Enhancers",
                                                                                                         genome = "hg19")
       
-      # Raw Motif Instances
-      RawMotifInstancesTrack<-subset(genomicPositions, 
-                                seqnames==input$chrM & start > input$fromM & end< input$toM)%>%AnnotationTrack(.,genome = "hg19",
-                                                                                                               stacking = "dense", 
-                                                                                                               col.line="black",
-                                                                                                               name="All Motifs")
-      
-
-      
-      assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
       assign("EnhancersHumanChromosomeSpecific", EnhancersHumanChromosomeSpecific, .GlobalEnv)
       assign("promotertrackChromosomeSpecific", promotertrackChromosomeSpecific, .GlobalEnv)
       assign("geneTrackChromosomeSpecific", geneTrackChromosomeSpecific, .GlobalEnv)
-      assign("knownGenes", knownGenes, .GlobalEnv)
-      assign("chromHMMTrackGenerator", chromHMMTrackGenerator, .GlobalEnv)
+      
+      #Chromosome Specific Predicted Motifs
+      PredictedTFBSTrack<-PredictedTFBS%>%subset(seqnames==input$chrM)%>%AnnotationTrack(genome = "hg19", 
+                                                                                         stacking = "dense",
+                                                                                         strand= "*",
+                                                                                         col.line="black",
+                                                                                         name="Predicted TFBS")
       
       
+      
+      assign("PredictedTFBSTrack", PredictedTFBSTrack, .GlobalEnv)
+      ########################################################
+      ## Re render each time anything changes
+      ###########################################################
+      # Raw Motif Instances
+      RawMotifInstancesTrack<-subset(genomicLocationOfMotifs, 
+                                seqnames==input$chrM & start > input$fromM & end< input$toM)%>%AnnotationTrack(.,
+                                                                                                               genome = "hg19",
+                                                                                                               stacking = "dense", 
+                                                                                                               col.line="black",
+                                                                                                               name="All Motif Instances")
+      assign("RawMotifInstancesTrack", RawMotifInstancesTrack, .GlobalEnv)
+      
+      
+      # Chromosome For Predicted Motifs
+            chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
+                                                  chr= input$chrM, 
+                                                  from  = 1000000,
+                                                  to = 1000000000000,
+                                                  bedFile = chromatinState,
+                                                  featureDisplay = "all",
+                                                  colorcase='roadmap15')
+      
+assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
+
       
       
         plotTracks(trackList =c(humanIdeogramTrack,
                                 gHumanTrack, 
+                                IntearctionTrack,
                                 EnhancersHumanChromosomeSpecific,
                                 PredictedTFBSTrack,
                                 RawMotifInstancesTrack, 
                                 promotertrackChromosomeSpecific, 
                                 geneTrackChromosomeSpecific,
                                 chromatinStatesTrack), 
-                   sizes= c(1,1,1,1,1,1,3),
+                   sizes= c(1,1,3,1,1,1,1,3,3),
                    from =input$fromM, 
                    to= input$toM,
                    chromosome= input$chrM,
@@ -634,37 +664,6 @@ shinyServer(function(input, output) {
         assign("PredictedTFBSTrack", PredictedTFBSTrack, .GlobalEnv)
         assign("EnhancersHuman", EnhancersHuman, .GlobalEnv)
         
-        
-        
-        
-        ##ChromHMM Track Generator specifically for humans
-        chromHMMTrackGenerator<-function (gen = "hg19",
-                                          chr, 
-                                          from, 
-                                          to,
-                                          bedFile, 
-                                          featureDisplay = featureDisplay, 
-                                          colorcase = "roadmap15") 
-        {
-          desiredRegion <- subset(get(bedFile), end > from & 
-                                    start < to & seqnames == chr)
-          track <- AnnotationTrack(desiredRegion, 
-                                   stacking = "dense",
-                                   col.line="black",
-                                   feature = (mcols(desiredRegion))$name,
-                                   genome = "hg19",
-                                   strand= "*",
-                                   name = paste(bedFile))
-          
-          displayPars(track) <- list(`1_TssA` = "#FF0000", `2_TssAFlnk` = "#FF6E00", 
-                                     `3_TxFlnk` = "#32CD32", `4_Tx` = "#008000", `5_TxWk` = "#006400", 
-                                     `6_EnhG` = "#C2E105", `7_Enh` = "#FFFF00", `8_ZNF/Rpts` = "#66CDAA", 
-                                     `9_Het` = "#8A91D0", `10_TssBiv` = "#CD5C5C", `11_BivFlnk` = "#E9967A", 
-                                     `12_EnhBiv` = "#BDB76B", `13_ReprPC` = "#3A3838", 
-                                     `14_ReprPCWk` = "#808080", `15_Quies` = "#DCDCDC", 
-                                     Empty = "#ffffff")
-          return(track)
-        }
         
         chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
                                                      chr= input$chrM, 
@@ -1234,7 +1233,7 @@ shinyServer(function(input, output) {
   })
   
  output$DataTablePredictedSites<- renderDataTable(
-    subset(PredictedTFBSTrack, start>=input$fromM & end<= input$toM, seqnames>= input$chrM)
+    subset(PredictedTFBS, start>=input$fromM & end<= input$toM, seqnames>= input$chrM)%>%as.data.frame()
   )
   
   
