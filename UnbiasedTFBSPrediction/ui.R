@@ -1274,6 +1274,7 @@ dashboardPage(
                                "Chromosome 22" = "chr22",
                                "Chromosome X" = "chrX",
                                "Chromosome Y" = "chrY"), selected = "chrX"),
+    actionButton("action", "Computationally Predict Sites"),
     hr(),
     fluidRow(column(3, verbatimTextOutput("value"))
     )
@@ -1288,7 +1289,7 @@ dashboardPage(
                          color.background = getOption("spinner.color.background", default = "#FFFFFF")))
              ),
     tabPanel("Human (hg19) Genome Browser",      
-             withSpinner(plotOutput("DataTablePredictedSites"),
+             withSpinner(dataTableOutput("DataTablePredictedSites"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
                          color.background = getOption("spinner.color.background", default = "#FFFFFF")))
