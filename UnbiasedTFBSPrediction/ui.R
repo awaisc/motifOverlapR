@@ -14,7 +14,8 @@ list.of.packages <- c("shiny", "shinycssloaders",
                       "BSgenome.Hsapiens.UCSC.hg19",
                       "org.Hs.eg.db",
                       "TFBSTools",
-                      "JASPAR2016")
+                      "JASPAR2016", 
+                      "seqLogo")
 
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 ## try http:// if https:// URLs are not supported
@@ -32,7 +33,19 @@ library(gridExtra)
 dashboardPage(
   dashboardHeader(title = "TFBS prediction and Genome Browser"),
   dashboardSidebar(
-    numericInput(inputId= "MatchPercentage", label = "Match percentage of the PWM",value = 95, min = 0, max= 100),
+
+    checkboxInput("TypeInSequence", "Type In DNA Sequence",value =  FALSE),
+    conditionalPanel(
+      condition = "input.TypeInSequence == true",
+      textInput("CustomDNASequence", "Type in DNA Sequence")
+    ),
+    
+    checkboxInput("CustomTFMatrix", "Upload Custom TF Position Weight Matrix",value =  FALSE),
+    conditionalPanel(
+      condition = "input.CustomTFMatrix== true",
+      fileInput("JasparCustomMatrix", "Upload Custom Jaspar Formated Position Weight Matrix")
+    ),
+    
     selectizeInput(inputId= "TranscriptionFactorPWM", label = "Transcription Factor",choices = list("Arnt",
                                                                                                     "Ahr::Arnt",
                                                                                                     "br",
@@ -1115,7 +1128,19 @@ dashboardPage(
                                                                                                     "ARALYDRAFT_496250",
                                                                                                     "ARALYDRAFT_493022",
                                                                                                     "ARALYDRAFT_484486"), selected= "Arnt" ),
-    checkboxInput("Conserved", label = "Identify Conserved Motifs In Promoters", value = TRUE),
+    
+    
+    
+    
+    numericInput(inputId= "MatchPercentage", label = "Match percentage of the PWM",value = 95, min = 0, max= 100),
+    
+    
+    
+    
+    checkboxInput("Conserved", label = "Identify Motifs In Conserved Promoter regions", value = TRUE),
+    
+    
+    
     selectizeInput("CellTypeToPredict", label = "Cell Type/ Epigenomic Environment",choices = list("H1 Cell Line"="E003",
                                                                                                 "H1 BMP4 Derived Mesendoderm Cultured Cells"="E004",
                                                                                                 "H1 BMP4 Derived Trophoblast Cultured Cells"="E005",
@@ -1281,18 +1306,24 @@ dashboardPage(
  
     
   ),
+  
   dashboardBody(tabsetPanel(
     tabPanel("Human (hg19) Genome Browser",      
+             withSpinner(plotOutput("VisualizeTFMotif"),
+                         type = getOption("spinner.type", default = 3),
+                         color = getOption("spinner.color", default = "#0275D8"),
+                         color.background = getOption("spinner.color.background", default = "#FFFFFF")),
+    tabPanel("Human (hg19) Genome Browser", 
              withSpinner(plotOutput("HumangvizPlot"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
-                         color.background = getOption("spinner.color.background", default = "#FFFFFF")))
-             ),
-    tabPanel("Human (hg19) Genome Browser",      
+                         color.background = getOption("spinner.color.background", default = "#FFFFFF")),
+             tabPanel("Human (hg19) Genome Browser", 
              withSpinner(dataTableOutput("DataTablePredictedSites"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
-                         color.background = getOption("spinner.color.background", default = "#FFFFFF")))
+                         color.background = getOption("spinner.color.background", default = "#FFFFFF")))))
   )
     
     )
+)

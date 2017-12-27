@@ -21,6 +21,8 @@ require(JASPAR2016)
 require(TFBSTools)
 require(readr)
 require(AnnotationHub)
+require(seqLogo)
+require(readr)
 
 
 
@@ -34,6 +36,51 @@ shinyServer(function(input, output) {
   ##############################################
   #Render Human GVIZ plot 1
   #############################################33
+  
+  JASPARR2016Matrices <- getMatrixSet(JASPAR2016, list() )
+  namedJasparDataBase<-lapply(1:length(JASPARR2016Matrices), function(x){
+    names(JASPARR2016Matrices[x])<-JASPARR2016Matrices[[x]]@name  
+  })
+  
+  names(JASPARR2016Matrices)<-namedJasparDataBase
+  
+  ## Visualize your motif
+  
+  output$VisualizeTFMotif<-renderPlot({
+    
+    if(input$CustomTFMatrix==TRUE){
+      
+      PathToCustomMatrix<-input$JasparCustomMatrix
+    
+      #Import and convert to custom Matrix
+      TextTranscriptionFactor <- read_delim(PathToCustomMatrix$datapath, 
+                                            "\t", escape_double = FALSE, col_names = FALSE, 
+                                            trim_ws = TRUE, skip = 1)%>%as.matrix()
+      
+      
+      #Sum the first column and divide all numbers by that to normalize and make it a frequency matrix.
+      
+      PWMTextTranscriptionFactor<-TextTranscriptionFactor/sum(TextTranscriptionFactor[,1])
+      
+      assign("PWMTextTranscriptionFactor", PWMTextTranscriptionFactor, .GlobalEnv)
+      
+      seqLogo(PWMTextTranscriptionFactor)
+      
+      
+  } else if(input$TypeInSequence==TRUE){
+     
+    
+    round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) %>%seqLogo()
+  
+    
+    } else {
+   
+    ## Rewrite this because some of these matrices dont have even numbers of nucelotides for eahc position #WTF 
+    (JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix/sum(JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix[,1]))%>%seqLogo()
+    
+  }
+    })
+  
   output$HumangvizPlot <- renderPlot({
     
     input$action
@@ -45,15 +92,15 @@ shinyServer(function(input, output) {
      ###Data Inputs
      #######################################
      #Enhancers
-     EnhancersHuman<-import("/media/awais/NewDrivewho/UnbiasedTFBSPrediction/Unbiased TFBS Prediction/DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
+     EnhancersHuman<-import("../DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
      
      assign("EnhancersHuman", EnhancersHuman, .GlobalEnv)
      
-     ConservedRegionsInPromoters<-readRDS("/media/awais/NewDrivewho/UnbiasedTFBSPrediction/Unbiased TFBS Prediction/DataFiles/Conserved Region/Human/PromoterConservedRegions")
+     ConservedRegionsInPromoters<-readRDS("../DataFiles/Conserved Region/Human/PromoterConservedRegions")
      assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
      
      ##Importing Bed File with Granges
-     promoterTracks <- read.delim("/media/awais/NewDrivewho/Downloads/hg19bedWithNames.bed.gz")%>%
+     promoterTracks <- read.delim("../DataFiles/Gene Tracks/Human/hg19bedWithNames.bed.gz")%>%
        makeGRangesFromDataFrame(
          keep.extra.columns=TRUE,
          ignore.strand=FALSE,
@@ -66,6 +113,25 @@ shinyServer(function(input, output) {
      assign("promoterTracks", promoterTracks, .GlobalEnv)
      
      
+     
+     # ########################################################
+     ### Using the TXDB object to make a Promoter Grange with Gene symbols instead of importing.
+     #Limited because it does not get every gene symbol name (inparticular those in the scaffolds)
+     ###########################################################
+     # GENEIDToSymbol <- cbind.data.frame(x[mappedkeys(org.Hs.egSYMBOL)])
+     # 
+     # GeneIDDataFrame<-as.data.frame(Knownegne)
+     # 
+     # GeneIDDataFrame$GENEID<-GeneIDDataFrame$GENEID%>%as.character()
+     # 
+     # promoterTracks<-left_join(GeneIDDataFrame, GENEIDToSymbol,
+     #                                by= c("GENEID" ="gene_id"))%>%
+     #   makeGRangesFromDataFrame(., keep.extra.columns = TRUE)%>%promoters()
+     # mcols(promoterTracks) <- cbind.data.frame( "hg19.kgXref.geneSymbol" =mcols(promoterTracks)$symbol)
+     # 
+     ### Pipe line for identifying potential TFBS
+     
+     
      # Epigenomic Chromatin state 
      
      ah<-AnnotationHub()
@@ -75,7 +141,7 @@ shinyServer(function(input, output) {
      ###Promoter Enhancer assoication data table Input
      ###################################
          #Read in the table
-     EnhancerPromoterAssoications <-read_delim("/media/awais/NewDrivewho/UnbiasedTFBSPrediction/Unbiased TFBS Prediction/DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt", 
+     EnhancerPromoterAssoications <-read_delim("../DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt", 
                                                "\t", escape_double = FALSE, trim_ws = TRUE)
      assign("EnhancerPromoterAssoications", EnhancerPromoterAssoications, .GlobalEnv)
      
@@ -124,7 +190,7 @@ shinyServer(function(input, output) {
        track <- AnnotationTrack(desiredRegion, 
                                 stacking = "dense",
                                 col.line="black",
-                                feature = (mcols(desiredRegion))$name,
+                                feature = (mcols(desiredRegion))$abbr,
                                 genome = "hg19",
                                 strand= "*",
                                 name = "Cell Type Selected")
@@ -145,7 +211,7 @@ shinyServer(function(input, output) {
      ###Interaction Track Based on the CAGE Expression Enhancer-promoter assoication
      #################################################
      
-     CageExpressionGenomicIntearctions <- readRDS(file = "/media/awais/NewDrivewho/UnbiasedTFBSPrediction/Unbiased TFBS Prediction/DataFiles/Interactions/Human/EnhancerPromoterAssoicationRObject")
+     CageExpressionGenomicIntearctions <- readRDS(file = "../DataFiles/Interactions/Human/EnhancerPromoterAssoicationRObject")
      
      IntearctionTrack<-CageExpressionGenomicIntearctions%>%InteractionTrack()
      
@@ -178,18 +244,58 @@ shinyServer(function(input, output) {
      
      ### Select a PWM Matrix and match to the genome
      
-     TranscriptionFactorPWM<-input$TranscriptionFactorPWM
+     if(input$CustomTFMatrix==TRUE){
+       
+       PathToCustomMatrix<-input$JasparCustomMatrix
+       
+       #Import and convert to custom Matrix
+       TextTranscriptionFactor <- read_delim(PathToCustomMatrix$datapath, 
+                                             "\t", escape_double = FALSE, col_names = FALSE, 
+                                             trim_ws = TRUE, skip = 1)%>%as.matrix()
+       
+       
+       #Sum the first column and divide all numbers by that to normalize and make it a frequency matrix.
+       
+       PWMTextTranscriptionFactor<-TextTranscriptionFactor/sum(TextTranscriptionFactor[,1])
+       
+       assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
+        
+       genomicLocationOfMotifs<-matchPWM(PWMTextTranscriptionFactor, 
+                                         BSgenome.Hsapiens.UCSC.hg19,
+                                         input$MatchPercentage)
+       
+       assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
+       
+       
+       
+     } else if(input$TypeInSequence==TRUE){
+       
+       
+       PWMTextTranscriptionFactor <- round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) 
+       
+       genomicLocationOfMotifs<-matchPWM(PWMTextTranscriptionFactor, 
+                                         BSgenome.Hsapiens.UCSC.hg19,
+                                         input$MatchPercentage)
+       
+       assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
+       
+       assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
+       
+     } else {
+       
+       matrix<-JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix
+       
+       genomicLocationOfMotifs<-matchPWM(matrix, 
+                                         BSgenome.Hsapiens.UCSC.hg19,
+                                         input$MatchPercentage)
+       
+       assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
+       
+       assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
+     }
      
-     assign("TranscriptionFactorPWM", TranscriptionFactorPWM, .GlobalEnv)
+    
      
-     
-     matrix<-JASPARR2016Matrices[[paste0(TranscriptionFactorPWM)]]@profileMatrix
-     
-     genomicLocationOfMotifs<-matchPWM(matrix, 
-                                BSgenome.Hsapiens.UCSC.hg19,
-                                input$MatchPercentage)
-     
-     assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
      ### Identify which of these motifs are located in enhancer regions
      MotifsInEnhancers<-subsetByOverlaps(genomicLocationOfMotifs ,
                                          EnhancersHuman)
@@ -422,8 +528,8 @@ shinyServer(function(input, output) {
       # Chromosome For Predicted Motifs
             chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
                                                   chr= input$chrM, 
-                                                  from  = 1000000,
-                                                  to = 1000000000000,
+                                                  from  = input$fromM,
+                                                  to = input$toM,
                                                   bedFile = chromatinState,
                                                   featureDisplay = "all",
                                                   colorcase='roadmap15')
@@ -455,23 +561,66 @@ assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
                    col = NULL, 
                    fontcolor.title = "black")
         
-      } else if(!TranscriptionFactorPWM==input$TranscriptionFactorPWM){
+      } else if(!TranscriptionFactorPWM==input$TranscriptionFactorPWM & !TranscriptionFactorPWM==input$JasparCustomMatrix & !TranscriptionFactorPWM==input$TypeInSequence ){
         
+        
+        ### Pipe Line Computational
         
         ### Select a PWM Matrix and match to the genome
         
-        TranscriptionFactorPWM<-input$TranscriptionFactorPWM
+        if(input$CustomTFMatrix==TRUE){
+          
+          PathToCustomMatrix<-input$JasparCustomMatrix
+          
+          #Import and convert to custom Matrix
+          TextTranscriptionFactor <- read_delim(PathToCustomMatrix$datapath, 
+                                                "\t", escape_double = FALSE, col_names = FALSE, 
+                                                trim_ws = TRUE, skip = 1)%>%as.matrix()
+          
+          
+          #Sum the first column and divide all numbers by that to normalize and make it a frequency matrix.
+          
+          PWMTextTranscriptionFactor<-TextTranscriptionFactor/sum(TextTranscriptionFactor[,1])
+          
+          assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
+          
+          genomicLocationOfMotifs<-matchPWM(PWMTextTranscriptionFactor, 
+                                            BSgenome.Hsapiens.UCSC.hg19,
+                                            input$MatchPercentage)
+          
+          assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
+          
+          
+          
+        } else if(input$TypeInSequence==TRUE){
+          
+          
+          PWMTextTranscriptionFactor <- round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) 
+          
+          genomicLocationOfMotifs<-matchPWM(PWMTextTranscriptionFactor, 
+                                            BSgenome.Hsapiens.UCSC.hg19,
+                                            input$MatchPercentage)
+          
+          assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
+          
+          assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
+          
+        } else {
+          
+          matrix<-JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix
+          
+          genomicLocationOfMotifs<-matchPWM(matrix, 
+                                            BSgenome.Hsapiens.UCSC.hg19,
+                                            input$MatchPercentage)
+          
+          assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
+          
+          assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
+        }
         
-        assign("TranscriptionFactorPWM", TranscriptionFactorPWM, .GlobalEnv)
         
         
-        matrix<-JASPARR2016Matrices[[paste0(TranscriptionFactorPWM)]]@profileMatrix
         
-        genomicLocationOfMotifs<-matchPWM(matrix, 
-                                          BSgenome.Hsapiens.UCSC.hg19,
-                                          input$MatchPercentage)
-        
-        assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
         ### Identify which of these motifs are located in enhancer regions
         MotifsInEnhancers<-subsetByOverlaps(genomicLocationOfMotifs ,
                                             EnhancersHuman)
@@ -703,8 +852,8 @@ assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
         # Chromosome For Predicted Motifs
         chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
                                                      chr= input$chrM, 
-                                                     from  = 1000000,
-                                                     to = 1000000000000,
+                                                     from  = input$fromM,
+                                                     to = input$toM,
                                                      bedFile = chromatinState,
                                                      featureDisplay = "all",
                                                      colorcase='roadmap15')
@@ -949,11 +1098,12 @@ assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
       # Chromosome For Predicted Motifs
       chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
                                                    chr= input$chrM, 
-                                                   from  = 1000000,
-                                                   to = 1000000000000,
+                                                   from  = input$fromM,
+                                                   to = input$toM,
                                                    bedFile = chromatinState,
                                                    featureDisplay = "all",
                                                    colorcase='roadmap15')
+      
       
       assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
       
@@ -984,8 +1134,9 @@ assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
         
         
       }else if(!chrM==input$chrM){ 
+        
         ###############################################################################################
-        ###Genome browser part   
+        ###Genome browser part for when you change chromosomes
         ##############################################################################################
         chrM<-input$chrM
         assign("chrM", chrM, .GlobalEnv)
@@ -1152,9 +1303,9 @@ assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
   })
   
  output$DataTablePredictedSites<- renderDataTable(
-   RenderDataFrame<- subset(PredictedTFBS, start>=input$fromM & end<= input$toM & seqnames== input$chrM)%>%as.data.frame()
+   RenderDataFrame <- subset(PredictedTFBS, start>=input$fromM & end<= input$toM & seqnames== input$chrM)%>%as.data.frame()
   )
-  
+
   
   
   
