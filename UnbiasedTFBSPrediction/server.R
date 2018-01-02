@@ -60,9 +60,11 @@ shinyServer(function(input, output) {
       
       #Sum the first column and divide all numbers by that to normalize and make it a frequency matrix.
       
-      PWMTextTranscriptionFactor<-TextTranscriptionFactor/sum(TextTranscriptionFactor[,1])
+      PWMTextTranscriptionFactor<-(TextTranscriptionFactor/
+                                     TextTranscriptionFactor%>%
+                                     colSums())%>%as.matrix()
       
-      assign("PWMTextTranscriptionFactor", PWMTextTranscriptionFactor, .GlobalEnv)
+      assign("matrixForMatching", TextTranscriptionFactor, .GlobalEnv)
       
       seqLogo(PWMTextTranscriptionFactor)
       
@@ -70,16 +72,27 @@ shinyServer(function(input, output) {
   } else if(input$TypeInSequence==TRUE){
      
     
-    round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) %>%seqLogo()
+    TranscriptionFactor<-round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) %T>%seqLogo()
   
+    assign("matrixForMatching", TranscriptionFactor, .GlobalEnv)
     
     } else {
    
     ## Rewrite this because some of these matrices dont have even numbers of nucelotides for eahc position #WTF 
-    (JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix/sum(JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix[,1]))%>%seqLogo()
+      # OKay so the issue appears to be with repeat numbers Eg 0.333333333333333333333. NOt sure how to deal with this. 
+      
+    (JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix/
+       colSums(JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix))%>%
+        as.matrix()%>%
+        seqLogo()
     
+      JasparMatrixForMatching<-JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix
+      assign("matrixForMatching", JasparMatrixForMatching, .GlobalEnv)
   }
     })
+  
+  
+  
   
   output$HumangvizPlot <- renderPlot({
     
@@ -95,9 +108,7 @@ shinyServer(function(input, output) {
      EnhancersHuman<-import("../DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
      
      assign("EnhancersHuman", EnhancersHuman, .GlobalEnv)
-     
-     ConservedRegionsInPromoters<-readRDS("../DataFiles/Conserved Region/Human/PromoterConservedRegions")
-     assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
+
      
      ##Importing Bed File with Granges
      promoterTracks <- read.delim("../DataFiles/Gene Tracks/Human/hg19bedWithNames.bed.gz")%>%
@@ -225,16 +236,6 @@ shinyServer(function(input, output) {
      #To do this, we took the CAGE TSS-enhancer assoication off of Fantom5 Database to identify what genes are 
      #Regulated by these motifs in enhancer regions
      
-
-     ### Extract PWM and give them a name from the JASPAR database
-     JASPARR2016Matrices <- getMatrixSet(JASPAR2016, list() )
-     namedJasparDataBase<-lapply(1:length(JASPARR2016Matrices), function(x){
-       names(JASPARR2016Matrices[x])<-JASPARR2016Matrices[[x]]@name  
-     })
-     
-     names(JASPARR2016Matrices)<-namedJasparDataBase
-     
-     
      
      
      #####################################################################
@@ -242,57 +243,16 @@ shinyServer(function(input, output) {
      ###################################################################
      
      
-     ### Select a PWM Matrix and match to the genome
+     ### Input Transcription Factor Matrix from the seqlogo function
      
-     if(input$CustomTFMatrix==TRUE){
-       
-       PathToCustomMatrix<-input$JasparCustomMatrix
-       
-       #Import and convert to custom Matrix
-       TextTranscriptionFactor <- read_delim(PathToCustomMatrix$datapath, 
-                                             "\t", escape_double = FALSE, col_names = FALSE, 
-                                             trim_ws = TRUE, skip = 1)%>%as.matrix()
-       
-       
-       #Sum the first column and divide all numbers by that to normalize and make it a frequency matrix.
-       
-       PWMTextTranscriptionFactor<-TextTranscriptionFactor/sum(TextTranscriptionFactor[,1])
-       
-       assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
-        
-       genomicLocationOfMotifs<-matchPWM(PWMTextTranscriptionFactor, 
+     assign("TranscriptionFactorPWM",matrixForMatching, .GlobalEnv )
+     
+     
+       genomicLocationOfMotifs<-matchPWM(matrixForMatching, 
                                          BSgenome.Hsapiens.UCSC.hg19,
                                          input$MatchPercentage)
        
        assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
-       
-       
-       
-     } else if(input$TypeInSequence==TRUE){
-       
-       
-       PWMTextTranscriptionFactor <- round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) 
-       
-       genomicLocationOfMotifs<-matchPWM(PWMTextTranscriptionFactor, 
-                                         BSgenome.Hsapiens.UCSC.hg19,
-                                         input$MatchPercentage)
-       
-       assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
-       
-       assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
-       
-     } else {
-       
-       matrix<-JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix
-       
-       genomicLocationOfMotifs<-matchPWM(matrix, 
-                                         BSgenome.Hsapiens.UCSC.hg19,
-                                         input$MatchPercentage)
-       
-       assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
-       
-       assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
-     }
      
     
      
@@ -301,13 +261,39 @@ shinyServer(function(input, output) {
                                          EnhancersHuman)
      
      if(input$Conserved==TRUE){
-     MotifsInConservedPromoterRegions<-subset(genomicLocationOfMotifs, 
-                                              countOverlaps(genomicLocationOfMotifs,
-                                                            ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
-     } else(
+       
+       ConservedValue<-input$Conserved
+       
+       assign("ConservedValue", ConservedValue , .GlobalEnv)
+       
+       if(!exists("ConservedRegionsInPromoters")){
+         
+         # Import the Conserved region and run the following code
+         
+         ConservedRegionsInPromoters<-readRDS("../DataFiles/Conserved Region/Human/PromoterConservedRegions")
+         assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
+         
+         MotifsInConservedPromoterRegions<-subset(genomicLocationOfMotifs, 
+                                                  countOverlaps(genomicLocationOfMotifs,
+                                                                ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
+       } else{
+         # If it does exist it will run this and and overlap it to get motifs that are fully conserved
+         
+         MotifsInConservedPromoterRegions<-subset(genomicLocationOfMotifs, 
+                                                  countOverlaps(genomicLocationOfMotifs,
+                                                                ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
+       }
+       
+     } else{
+       ConservedValue<-input$Conserved
+       
+       assign("ConservedValue", ConservedValue , .GlobalEnv)
+       
+       # If we are not looking for conserved promoter regions
        MotifsInConservedPromoterRegions<-subsetByOverlaps(genomicLocationOfMotifs, promoterTracks)
        
-     )
+     }
+     
      #### Combing the promoter and enhancer motifs into a single Grange List object
      
      MotifsInPromotersAndEnhancers<-list("Promoters"=MotifsInConservedPromoterRegions,
@@ -561,62 +547,24 @@ assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
                    col = NULL, 
                    fontcolor.title = "black")
         
-      } else if(!TranscriptionFactorPWM==input$TranscriptionFactorPWM & !TranscriptionFactorPWM==input$JasparCustomMatrix & !TranscriptionFactorPWM==input$TypeInSequence ){
+      } else if(!TranscriptionFactorPWM == matrixForMatching){
         
         
-        ### Pipe Line Computational
+        #####################################################################
+        ###Start of the pipe Line
+        ###################################################################
         
-        ### Select a PWM Matrix and match to the genome
         
-        if(input$CustomTFMatrix==TRUE){
-          
-          PathToCustomMatrix<-input$JasparCustomMatrix
-          
-          #Import and convert to custom Matrix
-          TextTranscriptionFactor <- read_delim(PathToCustomMatrix$datapath, 
-                                                "\t", escape_double = FALSE, col_names = FALSE, 
-                                                trim_ws = TRUE, skip = 1)%>%as.matrix()
-          
-          
-          #Sum the first column and divide all numbers by that to normalize and make it a frequency matrix.
-          
-          PWMTextTranscriptionFactor<-TextTranscriptionFactor/sum(TextTranscriptionFactor[,1])
-          
-          assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
-          
-          genomicLocationOfMotifs<-matchPWM(PWMTextTranscriptionFactor, 
-                                            BSgenome.Hsapiens.UCSC.hg19,
-                                            input$MatchPercentage)
-          
-          assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
-          
-          
-          
-        } else if(input$TypeInSequence==TRUE){
-          
-          
-          PWMTextTranscriptionFactor <- round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) 
-          
-          genomicLocationOfMotifs<-matchPWM(PWMTextTranscriptionFactor, 
-                                            BSgenome.Hsapiens.UCSC.hg19,
-                                            input$MatchPercentage)
-          
-          assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
-          
-          assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
-          
-        } else {
-          
-          matrix<-JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix
-          
-          genomicLocationOfMotifs<-matchPWM(matrix, 
-                                            BSgenome.Hsapiens.UCSC.hg19,
-                                            input$MatchPercentage)
-          
-          assign("TranscriptionFactorPWM", PWMTextTranscriptionFactor, .GlobalEnv)
-          
-          assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
-        }
+        ### Input Transcription Factor Matrix from the seqlogo function
+        assign("TranscriptionFactorPWM",matrixForMatching, .GlobalEnv )
+        
+        genomicLocationOfMotifs<-matchPWM(matrixForMatching, 
+                                          BSgenome.Hsapiens.UCSC.hg19,
+                                          input$MatchPercentage)
+        
+        assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
+        
+        
         
         
         
@@ -626,13 +574,39 @@ assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
                                             EnhancersHuman)
         
         if(input$Conserved==TRUE){
-          MotifsInConservedPromoterRegions<-subset(genomicLocationOfMotifs, 
-                                                   countOverlaps(genomicLocationOfMotifs,
-                                                                 ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
-        } else(
+          
+          ConservedValue<-input$Conserved
+          
+          assign("ConservedValue", ConservedValue , .GlobalEnv)
+          
+          if(!exists("ConservedRegionsInPromoters")){
+            
+            # Import the Conserved region and run the following code
+            
+            ConservedRegionsInPromoters<-readRDS("../DataFiles/Conserved Region/Human/PromoterConservedRegions")
+            assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
+            
+            MotifsInConservedPromoterRegions<-subset(genomicLocationOfMotifs, 
+                                                     countOverlaps(genomicLocationOfMotifs,
+                                                                   ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
+          } else{
+            # If it does exist it will run this and and overlap it to get motifs that are fully conserved
+            
+            MotifsInConservedPromoterRegions<-subset(genomicLocationOfMotifs, 
+                                                     countOverlaps(genomicLocationOfMotifs,
+                                                                   ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
+          }
+          
+        } else{
+          ConservedValue<-input$Conserved
+          
+          assign("ConservedValue", ConservedValue , .GlobalEnv)
+          
+          # If we are not looking for conserved promoter regions
           MotifsInConservedPromoterRegions<-subsetByOverlaps(genomicLocationOfMotifs, promoterTracks)
           
-        )
+        }
+        
         #### Combing the promoter and enhancer motifs into a single Grange List object
         
         MotifsInPromotersAndEnhancers<-list("Promoters"=MotifsInConservedPromoterRegions,
@@ -755,7 +729,8 @@ assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
           assign("PredictedTFBS", returnObjectDifferentialSites, .GlobalEnv)
           assign("returnObjectDifferentialSites", returnObjectDifferentialSites, .GlobalEnv)
           
-        }  else {
+        }
+        else {
           
           ## Returning unbiased results without transcriptomic data
           
@@ -885,8 +860,297 @@ assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
                    col = NULL, 
                    fontcolor.title = "black")
         
+
+    } else if( !input$Conserved == ConservedValue ) {
+     
+       if(input$Conserved==TRUE){
         
-    } else if(!CellTypeToPredict==input$CellTypeToPredict){
+        ConservedValue<-input$Conserved
+        
+        assign("ConservedValue", ConservedValue , .GlobalEnv)
+        
+        if(!exists("ConservedRegionsInPromoters")){
+          
+          # Import the Conserved region and run the following code
+          
+          ConservedRegionsInPromoters<-readRDS("../DataFiles/Conserved Region/Human/PromoterConservedRegions")
+          assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
+          
+          MotifsInConservedPromoterRegions<-subset(genomicLocationOfMotifs, 
+                                                   countOverlaps(genomicLocationOfMotifs,
+                                                                 ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
+        } else{
+          # If it does exist it will run this and and overlap it to get motifs that are fully conserved
+          
+          MotifsInConservedPromoterRegions<-subset(genomicLocationOfMotifs, 
+                                                   countOverlaps(genomicLocationOfMotifs,
+                                                                 ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
+        }
+        
+      } else{
+        ConservedValue<-input$Conserved
+        
+        assign("ConservedValue", ConservedValue , .GlobalEnv)
+        
+        # If we are not looking for conserved promoter regions
+        MotifsInConservedPromoterRegions<-subsetByOverlaps(genomicLocationOfMotifs, promoterTracks)
+        
+      }
+      
+      
+      #### Combing the promoter and enhancer motifs into a single Grange List object
+      
+      MotifsInPromotersAndEnhancers<-list("Promoters"=MotifsInConservedPromoterRegions,
+                                          "Enhancers"=MotifsInEnhancers)
+      
+      assign("MotifsInPromotersAndEnhancers", MotifsInPromotersAndEnhancers, .GlobalEnv)
+      
+      
+      
+      
+      
+      ################################################
+      #### Cell Type specific epigneonic Analysis
+      ##################################################
+      
+      CellTypeToPredict<-input$CellTypeToPredict
+      
+      assign("CellTypeToPredict", CellTypeToPredict, .GlobalEnv )
+      
+      ### Download the Chromatin state file From the annotation hub
+      
+      epiFiles <- query(ah, c(paste0(CellTypeToPredict,"_15_coreMarks_mnemonics"), "EpigenomeRoadMap") )
+      
+      chromatinState<-epiFiles[[paste0("AH", epiFiles@.db_uid)]]
+      
+      
+      #Assign the bedfile to the global environment for analysis later on downstream
+      
+      assign("chromatinState", chromatinState, .GlobalEnv)
+      
+      ## Subsetting the Chromatin states for active states to identify motifs in these regions
+      ActiveChromatinStates<-c("10_TssBiv",
+                               "7_Enh",
+                               "1_TssA",
+                               "11_BivFlnk",
+                               "2_TssAFlnk", 
+                               "5_TxWk",
+                               "4_Tx",
+                               "8_ZNF/Rpts",
+                               "6_EnhG", 
+                               "12_EnhBiv",
+                               "3_TxFlnk")
+      
+      
+      ActiveChromatinRegions<-chromatinState[chromatinState$abbr %in% ActiveChromatinStates,]
+      
+      #Overlap active reginos with motifs in CRMs giving us a completely unbiased set of results
+      UnbiasedPredictedMotifs<-lapply(MotifsInPromotersAndEnhancers,function(x){subsetByOverlaps( x,
+                                                                                                  ActiveChromatinRegions)})
+      
+      assign("UnbiasedPredictedMotifs", UnbiasedPredictedMotifs, .GlobalEnv )
+      
+      ###################################################
+      ###Assigning Gene targets to eac motif based on the assoication of the CRM it is located within. 
+      ####################################################
+      
+      ### First we identify the genes that are regulated by our unbiased predicted results using genomic annotation 
+      
+      
+      #Overlap the promoter regions of genes with unbiased motifs returning promoters with a predicted TFBS
+      OverlappingRangeOfMOtifsInPromoters<-findOverlaps(promoterTracks, UnbiasedPredictedMotifs$Promoters)
+      
+      unbiasedPromoterMotifs<-UnbiasedPredictedMotifs$Promoters[OverlappingRangeOfMOtifsInPromoters%>%subjectHits()]
+      
+      
+      mcols(unbiasedPromoterMotifs)<- cbind.data.frame(mcols(unbiasedPromoterMotifs),
+                                                       "Genes Regulated" = promoterTracks[OverlappingRangeOfMOtifsInPromoters%>%queryHits()]$hg19.kgXref.geneSymbol)
+      
+      
+      ## Now lets get the promoters of genes regulated by motifs in enhancres
+      OverlappingRangeEnhancersMotifs<-findOverlaps(EnhancersWithGeneTargetsGrange, UnbiasedPredictedMotifs$Enhancers)
+      
+      EnhancerTargets<-EnhancersWithGeneTargetsGrange$GenesRegulatedByEnhancers[OverlappingRangeEnhancersMotifs%>%queryHits()]
+      
+      MotifsInEnhancers<- UnbiasedPredictedMotifs$Enhancers[OverlappingRangeEnhancersMotifs%>%subjectHits()]
+      
+      mcols(MotifsInEnhancers)<- cbind.data.frame(mcols(MotifsInEnhancers), "Genes Regulated" = EnhancerTargets)
+      
+      
+      UnbiasedMotifsPredicted<-c("Promoters With Gene Targets" = unbiasedPromoterMotifs,
+                                 "Enhancers With Gene Targets" = MotifsInEnhancers)
+      
+      assign("UnbiasedMotifsPredicted", UnbiasedMotifsPredicted, .GlobalEnv)
+      
+      
+      
+      
+      
+      #######################################################
+      ## Left Joining with differentially expressed gene list
+      #########################################################
+      
+      if(input$DifferentialExpressedGenes==TRUE){
+        
+        
+        differenitallyExpressedGenesList<-input$differenitallyExpressedGenesList
+        
+        assign("differenitallyExpressedGenesList", differenitallyExpressedGenesList, .GlobalEnv)
+        
+        ## Genes who showed differenital expression with an enhancer that was correlated with its expression
+        enhancerTargetsOfTF<-subset(UnbiasedMotifsPredicted$`Enhancers With Gene Targets`,  
+                                    `Genes Regulated` %in% differenitallyExpressedGenesList) 
+        
+        
+        ##Genes who showed differenital expression with promoter targets
+        promoterTargetsOfTF<-subset(UnbiasedMotifsPredicted$`Promoters With Gene Targets` ,
+                                    `Genes Regulated` %in% differenitallyExpressedGenesList) 
+        
+        
+        
+        ##Predicted Sites in the Regulatory Elements of these genes
+        
+        
+        returnObjectDifferentialSites<-c("Promoter Predicted Sites" = promoterTargetsOfTF,
+                                         "Enhancer Predicted Sites" = enhancerTargetsOfTF)%>%unlist()
+        
+        GenomeBrowserBiasedSites<-c(returnObjectDifferentialSites$`Promoter Predicted Sites`,
+                                    returnObjectDifferentialSites$`Enhancer Predicted Sites`)%>%unlist()
+        
+        assign("PredictedTFBS", returnObjectDifferentialSites, .GlobalEnv)
+        assign("returnObjectDifferentialSites", returnObjectDifferentialSites, .GlobalEnv)
+        
+      }
+      else {
+        
+        ## Returning unbiased results without transcriptomic data
+        
+        
+        returnObjectUnbaised<-c(
+          "Promoter Predicted Sites"= UnbiasedMotifsPredicted$`Enhancers With Gene Targets`,
+          "Enhancer Predicted Sites"= UnbiasedMotifsPredicted$`Promoters With Gene Targets` )%>%unlist()
+        
+        assign("returnObjectUnbaised", returnObjectUnbaised, .GlobalEnv)
+        
+        GenomeBrowserUnbiasedSites<-c(returnObjectUnbaised$`Promoter Predicted Sites`,
+                                      returnObjectUnbaised$`Enhancer Predicted Sites`)%>%unlist()
+        
+        assign("PredictedTFBS", GenomeBrowserUnbiasedSites, .GlobalEnv)
+      }
+      
+      
+      ###############################################################################################
+      ###Genome browser part   
+      ##############################################################################################
+      chrM<-input$chrM
+      assign("chrM", chrM, .GlobalEnv)
+      
+      humanIdeogramTrack<-IdeogramTrack(chromosome = input$chrM, genome="hg19",name= "Ideogram")
+      gHumanTrack<-GenomeAxisTrack(name= "Axis")
+      
+      assign("humanIdeogramTrack", humanIdeogramTrack, .GlobalEnv)
+      assign("gHumanTrack", gHumanTrack, .GlobalEnv)
+      
+      
+      ###############################################
+      ####Identifying motifs in CRM regions
+      ################################################
+      
+      
+      
+      # Gene Track with symbols :D
+      knownGenes <- GeneRegionTrack(TxDb.Hsapiens.UCSC.hg19.knownGene, 
+                                    genome="hg19", 
+                                    chromosome=input$chrM, 
+                                    showId=TRUE,
+                                    geneSymbol=TRUE, 
+                                    name="UCSC")
+      
+      symbols <- unlist(mapIds(org.Hs.eg.db, gene(knownGenes),
+                               "SYMBOL", "ENTREZID", 
+                               multiVals = "first"))
+      
+      symbol(knownGenes) <- symbols[gene(knownGenes)]
+      
+      assign("knownGenes", knownGenes, .GlobalEnv)
+      
+      
+      
+      #Promoter and Enhancer Tracks for each chormosome Track
+      promotertrackChromosomeSpecific <- promoterTracks%>%subset(. , 
+                                                                 seqnames==input$chrM)%>%AnnotationTrack(., name= "PromoterTrack", 
+                                                                                                         genome="hg19")
+      geneTrackChromosomeSpecific <- knownGenes
+      
+      
+      
+      EnhancersHumanChromosomeSpecific <- EnhancersHuman%>%subset(. ,
+                                                                  seqnames==input$chrM)%>%AnnotationTrack(., name = "Enhancers",
+                                                                                                          genome = "hg19")
+      
+      assign("EnhancersHumanChromosomeSpecific", EnhancersHumanChromosomeSpecific, .GlobalEnv)
+      assign("promotertrackChromosomeSpecific", promotertrackChromosomeSpecific, .GlobalEnv)
+      assign("geneTrackChromosomeSpecific", geneTrackChromosomeSpecific, .GlobalEnv)
+      
+      #Chromosome Specific Predicted Motifs
+      PredictedTFBSTrack<-PredictedTFBS%>%subset(seqnames==input$chrM)%>%AnnotationTrack(genome = "hg19", 
+                                                                                         stacking = "dense",
+                                                                                         strand= "*",
+                                                                                         col.line="black",
+                                                                                         name="Predicted TFBS")
+      
+      
+      
+      assign("PredictedTFBSTrack", PredictedTFBSTrack, .GlobalEnv)
+      ########################################################
+      ## Re render each time anything changes
+      ###########################################################
+      # Raw Motif Instances
+      RawMotifInstancesTrack<-subset(genomicLocationOfMotifs, 
+                                     seqnames==input$chrM & start > input$fromM & end< input$toM)%>%AnnotationTrack(.,
+                                                                                                                    genome = "hg19",
+                                                                                                                    stacking = "dense", 
+                                                                                                                    col.line="black",
+                                                                                                                    name="All Motif Instances")
+      assign("RawMotifInstancesTrack", RawMotifInstancesTrack, .GlobalEnv)
+      
+      
+      # Chromosome For Predicted Motifs
+      chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
+                                                   chr= input$chrM, 
+                                                   from  = input$fromM,
+                                                   to = input$toM,
+                                                   bedFile = chromatinState,
+                                                   featureDisplay = "all",
+                                                   colorcase='roadmap15')
+      
+      assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
+      
+      
+      
+      plotTracks(trackList =c(humanIdeogramTrack,
+                              gHumanTrack, 
+                              IntearctionTrack,
+                              EnhancersHumanChromosomeSpecific,
+                              PredictedTFBSTrack,
+                              RawMotifInstancesTrack, 
+                              promotertrackChromosomeSpecific, 
+                              geneTrackChromosomeSpecific,
+                              chromatinStatesTrack), 
+                 sizes= c(1,1,3,1,1,1,1,3,3),
+                 from =input$fromM, 
+                 to= input$toM,
+                 chromosome= input$chrM,
+                 cex.title = 0.72, 
+                 rotation.title = 0, 
+                 showAxis = FALSE, 
+                 background.title = "white",
+                 lwd.title = 2, 
+                 title.width = 2, 
+                 cex.main = 5, 
+                 col = NULL, 
+                 fontcolor.title = "black")
+    }else if(!CellTypeToPredict==input$CellTypeToPredict){
       
       
       ################################################

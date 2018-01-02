@@ -20,7 +20,7 @@ list.of.packages <- c("shiny", "shinycssloaders",
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 ## try http:// if https:// URLs are not supported
 source("https://bioconductor.org/biocLite.R")
-if(length(new.packages)) BiocInstaller::biocLite(new.packages)
+if(length(new.packages)) BiocInstaller::biocLite(new.packages, suppressUpdates = TRUE)
 #################################
 ######Code that needs to be run once
 #######################################
@@ -31,22 +31,25 @@ library(shinydashboard)
 library(gridExtra)
 
 dashboardPage(
-  dashboardHeader(title = "TFBS prediction and Genome Browser"),
+  dashboardHeader(title = "motifOverlapR"),
   dashboardSidebar(
-
-    checkboxInput("TypeInSequence", "Type In DNA Sequence",value =  FALSE),
+    
+    checkboxInput("TypeInSequence", "Type In DNA Sequence", value =  FALSE),
     conditionalPanel(
       condition = "input.TypeInSequence == true",
-      textInput("CustomDNASequence", "Type in DNA Sequence")
+      textInput("CustomDNASequence", "Type in DNA Sequence", value = "TAATTA" )
     ),
     
-    checkboxInput("CustomTFMatrix", "Upload Custom TF Position Weight Matrix",value =  FALSE),
+    checkboxInput("CustomTFMatrix", "Upload Custom TF Position Weight Matrix", value =  FALSE),
     conditionalPanel(
-      condition = "input.CustomTFMatrix== true",
-      fileInput("JasparCustomMatrix", "Upload Custom Jaspar Formated Position Weight Matrix")
+      condition = "input.CustomTFMatrix == true",
+      fileInput("JasparCustomMatrix", "Upload Custom Jaspar Formated Position Weight Matrix", multiple = FALSE)
     ),
     
-    selectizeInput(inputId= "TranscriptionFactorPWM", label = "Transcription Factor",choices = list("Arnt",
+    checkboxInput("JasparDataBase", "Select Position Weight Matrix from Jaspar Database",value =  TRUE),
+    conditionalPanel(
+      condition = "input.JasparDataBase == true",
+    selectizeInput(inputId= "TranscriptionFactorPWM", label = "Transcription Factor", choices = list("Arnt",
                                                                                                     "Ahr::Arnt",
                                                                                                     "br",
                                                                                                     "br(var.2)",
@@ -1127,17 +1130,17 @@ dashboardPage(
                                                                                                     "ARALYDRAFT_495258",
                                                                                                     "ARALYDRAFT_496250",
                                                                                                     "ARALYDRAFT_493022",
-                                                                                                    "ARALYDRAFT_484486"), selected= "Arnt" ),
+                                                                                                    "ARALYDRAFT_484486"), selected= "Arnt" )),
     
     
     
     
-    numericInput(inputId= "MatchPercentage", label = "Match percentage of the PWM",value = 95, min = 0, max= 100),
+    numericInput(inputId= "MatchPercentage", label = "Match percentage of the PWM",value = 100, min = 0, max= 100),
     
     
     
     
-    checkboxInput("Conserved", label = "Identify Motifs In Conserved Promoter regions", value = TRUE),
+    checkboxInput("Conserved", label = "Identify Motifs In Conserved Promoter regions", value = FALSE),
     
     
     
@@ -1269,8 +1272,13 @@ dashboardPage(
                                                                                                 "Skeletal Muscle Male"="E107",
                                                                                                 "Stomach Mucosa"="E110"), multiple= FALSE, selected= "E001"),
     checkboxInput("DifferentialExpressedGenes", label = "Differentially expressed genes", value = FALSE),
-
+    conditionalPanel(
+      condition = "input.DifferentialExpressedGenes == true",
+      fileInput("differenitallyExpressedGenesList", "Upload a Differentially expressed list", multiple = FALSE)
+    ),
+    actionButton("action", "Computationally Predict Sites"),
     
+    # GEnome Browser inputs
     
     numericInput("fromM", "Starting Base",value = 25016813),
     numericInput("toM", "Finishing Base", value = 25038065),
@@ -1299,7 +1307,10 @@ dashboardPage(
                                "Chromosome 22" = "chr22",
                                "Chromosome X" = "chrX",
                                "Chromosome Y" = "chrY"), selected = "chrX"),
-    actionButton("action", "Computationally Predict Sites"),
+    
+    checkboxInput("ShowAllPredictedSites", "Refresh Show all Predicted Sites",value =  TRUE),
+    
+    
     hr(),
     fluidRow(column(3, verbatimTextOutput("value"))
     )
