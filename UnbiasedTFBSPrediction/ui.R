@@ -1319,21 +1319,45 @@ dashboardPage(
   ),
   
   dashboardBody(tabsetPanel(
-    tabPanel("Human (hg19) Genome Browser",      
+    tabPanel("Computational Prediction Componment", 
+             
              withSpinner(plotOutput("VisualizeTFMotif"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
                          color.background = getOption("spinner.color.background", default = "#FFFFFF")),
-    tabPanel("Human (hg19) Genome Browser", 
-             withSpinner(plotOutput("HumangvizPlot"),
+             
+             withSpinner(dataTableOutput("EnhancerPredictedSites"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
                          color.background = getOption("spinner.color.background", default = "#FFFFFF")),
-             tabPanel("Human (hg19) Genome Browser", 
+             
+             withSpinner(dataTableOutput("HumangvizPlot"),
+                         type = getOption("spinner.type", default = 3),
+                         color = getOption("spinner.color", default = "#0275D8"),
+                         color.background = getOption("spinner.color.background", default = "#FFFFFF"))),
+    
+    tabPanel("Genome Browser and Data Table",
+             withSpinner(plotOutput("GenomeBrowser"),
+                         type = getOption("spinner.type", default = 3),
+                         color = getOption("spinner.color", default = "#0275D8"),
+                         color.background = getOption("spinner.color.background", default = "#FFFFFF")),
+             
              withSpinner(dataTableOutput("DataTablePredictedSites"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
-                         color.background = getOption("spinner.color.background", default = "#FFFFFF")))))
+                         color.background = getOption("spinner.color.background", default = "#FFFFFF")),
+             
+             withSpinner(plotOutput("LegendsPlot"),
+                         type = getOption("spinner.type", default = 3),
+                         color = getOption("spinner.color", default = "#0275D8"),
+                         color.background = getOption("spinner.color.background", default = "#FFFFFF"))),
+    tabPanel("Gene Ontology",
+             withSpinner(dataTableOutput("GeneOntologyResults"),
+                         type = getOption("spinner.type", default = 3),
+                         color = getOption("spinner.color", default = "#0275D8"),
+                         color.background = getOption("spinner.color.background", default = "#FFFFFF")))
+    
+            
   )
     
     )
