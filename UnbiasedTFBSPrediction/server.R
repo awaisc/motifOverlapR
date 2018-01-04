@@ -147,7 +147,7 @@ shinyServer(function(input, output) {
      ###Promoter Enhancer assoication data table Input
      ###################################
          #Read in the table
-     EnhancerPromoterAssoications <-read_delim("../DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt", 
+     EnhancerPromoterAssoications <-read_delim("../DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt.gz", 
                                                "\t", escape_double = FALSE, trim_ws = TRUE)
      assign("EnhancerPromoterAssoications", EnhancerPromoterAssoications, .GlobalEnv)
      
@@ -391,16 +391,17 @@ shinyServer(function(input, output) {
        
        differenitallyExpressedGenesList<-input$differenitallyExpressedGenesList
        
+       read.table(differenitallyExpressedGenesList$datapath , quote="\"", stringsAsFactors=FALSE)
        assign("differenitallyExpressedGenesList", differenitallyExpressedGenesList, .GlobalEnv)
        
        ## Genes who showed differenital expression with an enhancer that was correlated with its expression
        enhancerTargetsOfTF<-subset(UnbiasedMotifsPredicted$`Enhancers With Gene Targets`,  
-                                   `Genes Regulated` %in% differenitallyExpressedGenesList) 
+                                   `Genes Regulated` %in% differenitallyExpressedGenesList[,1]) 
        
        
        ##Genes who showed differenital expression with promoter targets
        promoterTargetsOfTF<-subset(UnbiasedMotifsPredicted$`Promoters With Gene Targets` ,
-                                   `Genes Regulated` %in% differenitallyExpressedGenesList) 
+                                   `Genes Regulated` %in% differenitallyExpressedGenesList[,1]) 
        
        
        
