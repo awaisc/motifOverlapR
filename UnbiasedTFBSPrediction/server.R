@@ -97,7 +97,7 @@ shinyServer(function(input, output) {
   
   output$HumangvizPlot <- renderDataTable({
     
-    input$action
+    input$ComputeTranscriptionFactorSites
     
     isolate({
      
@@ -441,7 +441,12 @@ PromoterPredictedSites <- UnbiasedMotifsPredicted$`Promoters With Gene Targets`%
 
   
   output$EnhancerPredictedSites<-renderDataTable({
+    
+    input$ComputeTranscriptionFactorSites
+    
+    isolate({
     EnhancerPredictedSites <- UnbiasedMotifsPredicted$`Enhancers With Gene Targets`%>%as.data.frame()
+    })
   })
 
 
@@ -786,6 +791,8 @@ output$GenomeBrowser<-renderPlot({
   
   output$GeneOntologyResults <- renderDataTable({
     
+    input$GeneOntology
+    isolate({
     data <- unique(c(as.character(UnbiasedMotifsPredicted$`Promoters With Gene Targets`$`UCSC Transcript ID`), 
                      as.character(UnbiasedMotifsPredicted$`Enhancers With Gene Targets`$`UCSC Transcript ID`)))
     
@@ -802,7 +809,7 @@ output$GenomeBrowser<-renderPlot({
     
     
     GeneOntologyResultsSOrted <- topGO(geneOntology)
-
+})
     
   })
   
