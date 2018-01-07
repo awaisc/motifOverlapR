@@ -836,7 +836,7 @@ shinyServer(function(input, output) {
   
   output$DataTablePredictedSites<- renderDataTable({
     
-    RenderDataFrame <- subset(PredictedTFBS, start>=input$fromM & end<= input$toM & seqnames== input$chrM)%>%as.data.frame()
+    RenderDataFrame <- subset(PredictedTFBS, start >= input$fromM & end <= input$toM & seqnames == input$chrM)%>%as.data.frame()
   }
   )
   
@@ -873,13 +873,16 @@ shinyServer(function(input, output) {
       
       ucscToEntrez <- getBM(attributes = c("ucsc", "entrezgene", "external_gene_name"),
                             filters = "ucsc",
-                            values = list(data), mart = human_mart)
+                            values = list(data), 
+                            mart = human_mart)
       
       uniservser <- getBM(attributes = c("ucsc", "entrezgene", "external_gene_name"),
                           mart = human_mart)
       
       geneOntology <- goana(de = ucscToEntrez$entrezgene, 
-                            universe = uniservser$entrezgene, FDR=0.05, species = "Hs")
+                            universe = uniservser$entrezgene,
+                            FDR=0.05, 
+                            species = "Hs")
       
       
       # GeneOntologyResultsSOrted <- topGO(geneOntology)
