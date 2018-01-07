@@ -1310,7 +1310,7 @@ dashboardPage(
              
              
              box(title = "Promoter Predicted Sites", width= 12, collapsible = TRUE,
-             withSpinner(dataTableOutput("HumangvizPlot"),
+             withSpinner(dataTableOutput("EnhancerTable"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
                          color.background = getOption("spinner.color.background", default = "#FFFFFF")))),
