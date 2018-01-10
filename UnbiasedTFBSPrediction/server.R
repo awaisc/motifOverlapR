@@ -25,6 +25,7 @@ require(seqLogo)
 require(readr)
 require(limma)
 require(biomaRt)
+require(tibble)
 
 
 shinyServer(function(input, output) {
@@ -82,10 +83,10 @@ shinyServer(function(input, output) {
       ## Rewrite this because some of these matrices dont have even numbers of nucelotides for eahc position #WTF 
       # OKay so the issue appears to be with repeat numbers Eg 0.333333333333333333333. NOt sure how to deal with this. 
       
-      (JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix/
-         colSums(JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix))%>%
-        as.matrix()%>%
-        seqLogo()
+      
+      (JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix %>% 
+         apply(MARGIN = 2, function(x){x / sum(x)}))%>%seqLogo()
+      
       
       JasparMatrixForMatching<-JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix
       assign("matrixForMatching", JasparMatrixForMatching, .GlobalEnv)
@@ -134,11 +135,142 @@ shinyServer(function(input, output) {
   
   assign("ah", ah, .GlobalEnv)
   
+  EpigenoomicsConverter <- cbind.data.frame("H1 Cell Line"="E003",
+                                            "H1 BMP4 Derived Mesendoderm Cultured Cells"="E004",
+                                            "H1 BMP4 Derived Trophoblast Cultured Cells"="E005",
+                                            "H1 Derived Mesenchymal Stem Cells"="E006",
+                                            "H1 Derived Neuronal Progenitor Cultured Cells"="E007",
+                                            "H9 Cell Line"="E008",
+                                            "IMR90 fetal lung fibroblasts Cell Line"="E017",
+                                            "iPS DF 6.9 Cell Line"="E021",
+                                            "iPS DF 19.11 Cell Line"="E022",
+                                            "Breast variant Human Mammary Epithelial Cells (vHMEC)"="E028",
+                                            "Primary monocytes from peripheral blood"="E029",
+                                            "Primary B cells from peripheral blood"="E032",
+                                            "Primary T cells from cord blood"="E033",
+                                            "Primary T cells from peripheral blood"="E034",
+                                            "Primary Natural Killer cells from peripheral blood"="E046",
+                                            "Primary hematopoietic stem cells G-CSF-mobilized Female"="E050",
+                                            "Primary hematopoietic stem cells G-CSF-mobilized Male"="E051",
+                                            "Foreskin Fibroblast Primary Cells skin01"="E055",
+                                            "Foreskin Fibroblast Primary Cells skin02"="E056",
+                                            "Foreskin Keratinocyte Primary Cells skin02"="E057",
+                                            "Foreskin Melanocyte Primary Cells skin01"="E059",
+                                            "Fetal Adrenal Gland"="E080",
+                                            "Fetal Brain Male"="E081",
+                                            "Fetal Brain Female"="E082",
+                                            "Fetal Heart"="E083",
+                                            "Fetal Intestine Large"="E084",
+                                            "Fetal Intestine Small"="E085",
+                                            "Fetal Kidney"="E086",
+                                            "Fetal Lung"="E088",
+                                            "Fetal Muscle Trunk"="E089",
+                                            "Fetal Muscle Leg"="E090",
+                                            "Placenta"="E091",
+                                            "Fetal Stomach"="E092",
+                                            "Fetal Thymus"="E093",
+                                            "Gastric"="E094",
+                                            "Ovary"="E097",
+                                            "Pancreas"="E098",
+                                            "Psoas Muscle"="E100",
+                                            "Small Intestine"="E109",
+                                            "A549 EtOH 0.02pct Lung Carcinoma Cell Line"="E114",
+                                            "GM12878 Lymphoblastoid Cell Line"="E116",
+                                            "HeLa-S3 Cervical Carcinoma Cell Line"="E117",
+                                            "HepG2 Hepatocellular Carcinoma Cell Line"="E118",
+                                            "HMEC Mammary Epithelial Primary Cells"="E119",
+                                            "HSMM Skeletal Muscle Myoblasts Cell Line"="E120",
+                                            "HSMM cell derived Skeletal Muscle Myotubes Cell Line"="E121",
+                                            "HUVEC Umbilical Vein Endothelial Cells Cell Line"="E122",
+                                            "K562 Leukemia Cell Line"="E123",
+                                            "Monocytes-CD14+ RO01746 Cell Line"="E124",
+                                            "NH-A Astrocytes Cell Line"="E125",
+                                            "NHDF-Ad Adult Dermal Fibroblast Primary Cells"="E126",
+                                            "NHEK-Epidermal Keratinocyte Primary Cells"="E127",
+                                            "NHLF Lung Fibroblast Primary Cells"="E128",
+                                            "H9 Derived Neuronal Progenitor Cultured Cells"="E009",
+                                            "H9 Derived Neuron Cultured Cells"="E010",
+                                            "Dnd41 TCell Leukemia Cell Line"="E115",
+                                            "Osteoblast Primary Cells"="E129",
+                                            "hESC Derived CD184+ Endoderm Cultured Cells"="E011",
+                                            "hESC Derived CD56+ Ectoderm Cultured Cells"="E012",
+                                            "hESC Derived CD56+ Mesoderm Cultured Cells"="E013",
+                                            "HUES48 Cell Line"="E014",
+                                            "HUES6 Cell Line"="E015",
+                                            "HUES64 Cell Line"="E016",
+                                            "iPS-18 Cell Line"="E019",
+                                            "iPS-20b Cell Line"="E020",
+                                            "Bone Marrow Derived Cultured Mesenchymal Stem Cells"="E026",
+                                            "Primary T helper memory cells from peripheral blood 2"="E037",
+                                            "Primary T helper naive cells from peripheral blood"="E038",
+                                            "Primary T helper naive cells from peripheral blood"="E039",
+                                            "Primary T helper memory cells from peripheral blood 1"="E040",
+                                            "Primary T helper cells PMA-I stimulated"="E041",
+                                            "Primary T helper 17 cells PMA-I stimulated"="E042",
+                                            "Primary T helper cells from peripheral blood"="E043",
+                                            "Primary T regulatory cells from peripheral blood"="E044",
+                                            "Primary T cells effector/memory enriched from peripheral blood"="E045",
+                                            "Primary T killer naive cells from peripheral blood"="E047",
+                                            "Primary T killer memory cells from peripheral blood"="E048",
+                                            "Mesenchymal Stem Cell Derived Chondrocyte Cultured Cells"="E049",
+                                            "Foreskin Keratinocyte Primary Cells skin03"="E058",
+                                            "Foreskin Melanocyte Primary Cells skin03"="E061",
+                                            "Primary mononuclear cells from peripheral blood"="E062",
+                                            "Adipose Nuclei"="E063",
+                                            "Aorta"="E065",
+                                            "Liver"="E066",
+                                            "Brain Angular Gyrus"="E067",
+                                            "Brain Anterior Caudate"="E068",
+                                            "Brain Cingulate Gyrus"="E069",
+                                            "Brain Hippocampus Middle"="E071",
+                                            "Brain Inferior Temporal Lobe"="E072",
+                                            "Brain_Dorsolateral_Prefrontal_Cortex"="E073",
+                                            "Brain Substantia Nigra"="E074",
+                                            "Colonic Mucosa"="E075",
+                                            "Colon Smooth Muscle"="E076",
+                                            "Duodenum Smooth Muscle"="E078",
+                                            "Esophagus"="E079",
+                                            "Pancreatic Islets"="E087",
+                                            "Left Ventricle"="E095",
+                                            "Lung"="E096",
+                                            "Placenta Amnion"="E099",
+                                            "Rectal Mucosa Donor 29"="E101",
+                                            "Rectal Mucosa Donor 31"="E102",
+                                            "Rectal Smooth Muscle"="E103",
+                                            "Right Atrium"="E104",
+                                            "Right Ventricle"="E105",
+                                            "Sigmoid Colon"="E106",
+                                            "Skeletal Muscle Female"="E108",
+                                            "Stomach Smooth Muscle"="E111",
+                                            "Thymus"="E112",
+                                            "Spleen"="E113",
+                                            "ES-I3 Cell Line"="E001",
+                                            "ES-WA7 Cell Line"="E002",
+                                            "iPS-15b Cell Line"="E018",
+                                            "Mesenchymal Stem Cell Derived Adipocyte Cultured Cells"="E023",
+                                            "ES-UCSF4  Cell Line"="E024",
+                                            "Adipose Derived Mesenchymal Stem Cell Cultured Cells"="E025",
+                                            "Breast Myoepithelial Primary Cells"="E027",
+                                            "Primary neutrophils from peripheral blood"="E030",
+                                            "Primary B cells from cord blood"="E031",
+                                            "Primary hematopoietic stem cells"="E035",
+                                            "Primary hematopoietic stem cells short term culture"="E036",
+                                            "Muscle Satellite Cultured Cells"="E052",
+                                            "Cortex derived primary cultured neurospheres"="E053",
+                                            "Ganglion Eminence derived primary cultured neurospheres"="E054",
+                                            "Brain Germinal Matrix"="E070",
+                                            "Duodenum Mucosa"="E077",
+                                            "Skeletal Muscle Male"="E107",
+                                            "Stomach Mucosa"="E110")%>%t()%>%set_colnames("Epigenomic Road Map")%>%as.data.frame()%>%rownames_to_column(var= "Name Of Cell")
   
   
   ###############################################################################################
   ###Promoter Enhancer assoication data table to assign gene targets to enhancers using CAGE expression
   ###############################################################################################
+  
+  #Permissive Enhancer 
+  permissiveEnhancer <- import.bed("../DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
+  
   
   #Read in the table
   EnhancerPromoterAssoications <-read_delim("../DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt.gz", 
@@ -194,7 +326,8 @@ shinyServer(function(input, output) {
                                     to,
                                     bedFile, 
                                     featureDisplay = featureDisplay, 
-                                    colorcase = "roadmap15") 
+                                    colorcase = "roadmap15",
+                                    name ) 
   {
     desiredRegion <- subset(bedFile, end > from & 
                               start < to & seqnames == chr)
@@ -205,7 +338,7 @@ shinyServer(function(input, output) {
                              feature = (mcols(desiredRegion))$abbr,
                              genome = "hg19",
                              strand= "*",
-                             name = "Cell Type Selected")
+                             name = paste(name, "chromHMM"))
     
     displayPars(track) <- list(`1_TssA` = "#FF0000", `2_TssAFlnk` = "#FF6E00", 
                                `3_TxFlnk` = "#32CD32", `4_Tx` = "#008000", `5_TxWk` = "#006400", 
@@ -261,6 +394,9 @@ shinyServer(function(input, output) {
       MotifsInEnhancers <- subsetByOverlaps(genomicLocationOfMotifs ,
                                             EnhancersWithGeneTargetsGrange)
       
+      MotifsInPermissiveEnhancers <- subsetByOverlaps(genomicLocationOfMotifs, 
+                                                      permissiveEnhancer)
+      
       MotifsInPromoters <- subsetByOverlaps(genomicLocationOfMotifs, 
                                             promoterTracks)
       
@@ -273,31 +409,39 @@ shinyServer(function(input, output) {
         if(!exists("ConservedRegionsInPromoters")){
           
           # Import the Conserved region and run the following code
-          if(!file.exists("../DataFiles/Conserved Region/Human/phslopy100WayUCSCDataTrack.bw")){
+          if(!file.exists("../DataFiles/Conserved Region/Human/phyloP100WayUCSCDataTrack.bw")){
+            
+            
+            
+            dir.create("../DataFiles/Conserved Region")
+            
+            
+            dir.create("../DataFiles/Conserved Region/Human")
+            
             #Download it
             download.file(url = "ftp://hgdownload.soe.ucsc.edu/goldenPath/hg19/phyloP100way/hg19.100way.phyloP100way.bw",
-                          destfile = "../DataFiles/Conserved Region/Human/phslopy100WayUCSCDataTrack.bw",
+                          destfile = "../DataFiles/Conserved Region/Human/phyloP100WayUCSCDataTrack.bw",
                           method = "curl")
             
             # Read in the relative promoter regions and subset for regions with a score greater than 0 (or the neutral drift)
             
             ConservedRegionsInPromoters <-
-              import("../DataFiles/Conserved Region/Human/phslopy100WayUCSCDataTrack.bw", which= MotifsInPromoters)%>%subset(. , score>0)
+              import("../DataFiles/Conserved Region/Human/phyloP100WayUCSCDataTrack.bw", which= MotifsInPromoters)%>%subset(. , score>0)
             
             
             assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
             
             # Identify motifs whoses entire motif is in this region. 
             
-            MotifsInConservedPromoterRegions<-subset(MotifsInPromoters, 
-                                                     countOverlaps(MotifsInPromoters,
-                                                                   ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
+            MotifsInConservedPromoterRegions <- subset(MotifsInPromoters, 
+                                                       countOverlaps(MotifsInPromoters,
+                                                                     ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
             
             
           } else {
             
             ConservedRegionsInPromoters <-
-              import("../DataFiles/Conserved Region/Human/phslopy100WayUCSCDataTrack.bw", which= MotifsInPromoters)%>%subset(. , score>0)
+              import("../DataFiles/Conserved Region/Human/phyloP100WayUCSCDataTrack.bw", which= MotifsInPromoters)%>%subset(. , score>0)
             
             
             assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
@@ -309,13 +453,7 @@ shinyServer(function(input, output) {
                                                                    ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
           }
           
-          ConservedRegionsInPromoters <- readRDS("../DataFiles/Conserved Region/Human/PromoterConservedRegions")
-          assign("ConservedRegionsInPromoters", ConservedRegionsInPromoters, .GlobalEnv)
-          
-          MotifsInConservedPromoterRegions<-subset(genomicLocationOfMotifs, 
-                                                   countOverlaps(genomicLocationOfMotifs,
-                                                                 ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
-        } else{
+        } else {
           
           ConservedRegionsInPromoters <-
             import("../DataFiles/Conserved Region/Human/phslopy100WayUCSCDataTrack.bw", which= MotifsInPromoters)%>%subset(. , score>0)
@@ -328,6 +466,8 @@ shinyServer(function(input, output) {
           MotifsInConservedPromoterRegions <- subset(MotifsInPromoters, 
                                                      countOverlaps(MotifsInPromoters,
                                                                    ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
+          
+          
         }
         
       } else {
@@ -370,6 +510,14 @@ shinyServer(function(input, output) {
       #Assign the bedfile to the global environment for analysis later on downstream
       
       assign("chromatinState", chromatinState, .GlobalEnv)
+      
+      
+      ## Name for the chromHMM Track Down Stream
+      
+      NameOfCell <- subset(EpigenoomicsConverter, `Epigenomic Road Map`==CellTypeToPredict)$`Name Of Cell`
+      
+      assign("NameOfCell", NameOfCell, .GlobalEnv)
+      
       
       ## Subsetting the Chromatin states for active states to identify motifs in these regions
       ActiveChromatinStates <- c("10_TssBiv",
@@ -423,9 +571,16 @@ shinyServer(function(input, output) {
       
       mcols(MotifsInEnhancers) <- cbind.data.frame(mcols(MotifsInEnhancers), EnhancerTargets)
       
+      EnhancerMotifsNotTargeted <- MotifsInPermissiveEnhancers[!MotifsInPermissiveEnhancers %in% MotifsInEnhancers ]
+      
+      mcols(EnhancerMotifsNotTargeted) <- cbind.data.frame(mcols(EnhancerMotifsNotTargeted),
+                                                           "Genes Regulated" = "NA",
+                                                           "UCSC Transcript ID" = "NA")
       
       UnbiasedMotifsPredicted <- c("Promoters With Gene Targets" = unbiasedPromoterMotifs,
-                                   "Enhancers With Gene Targets" = MotifsInEnhancers)
+                                   "Enhancers With Gene Targets" = sort(c(MotifsInEnhancers, EnhancerMotifsNotTargeted))%>%unlist())
+      
+      
       
       assign("UnbiasedMotifsPredicted", UnbiasedMotifsPredicted, .GlobalEnv)
       
@@ -444,6 +599,7 @@ shinyServer(function(input, output) {
         
         differenitallyExpressedGenesList <- 
           read.table(differenitallyExpressedGenesPath$datapath , quote="\"", stringsAsFactors = FALSE)
+        
         assign("differenitallyExpressedGenesList", differenitallyExpressedGenesList, .GlobalEnv)
         
         ## Genes who showed differenital expression with an enhancer that was correlated with its expression
@@ -463,8 +619,16 @@ shinyServer(function(input, output) {
         returnObjectDifferentialSites <- c("Promoter Predicted Sites" = promoterTargetsOfTF,
                                            "Enhancer Predicted Sites" = enhancerTargetsOfTF)%>%unlist()
         
-        GenomeBrowserBiasedSites <- c(returnObjectDifferentialSites$`Promoter Predicted Sites`,
-                                      returnObjectDifferentialSites$`Enhancer Predicted Sites`)%>%unlist()
+        mcols(returnObjectUnbaised$`Promoter Predicted Sites`) <- cbind.data.frame(mcols(returnObjectUnbaised$`Promoter Predicted Sites`),
+                                                                                   "Regulatory Module" = "Promoter")
+        
+        mcols(returnObjectUnbaised$`Enhancer Predicted Sites`) <- cbind.data.frame(mcols(returnObjectUnbaised$`Enhancer Predicted Sites`),
+                                                                                   "Regulatory Module" = "Enhancer")
+        
+        GenomeBrowserUnbiasedSites <- c(returnObjectUnbaised$`Promoter Predicted Sites`,
+                                        returnObjectUnbaised$`Enhancer Predicted Sites`)%>%unlist()
+        
+        assign("PredictedTFBS", GenomeBrowserUnbiasedSites, .GlobalEnv)
         
         assign("PredictedTFBS", returnObjectDifferentialSites, .GlobalEnv)
         assign("returnObjectDifferentialSites", returnObjectDifferentialSites, .GlobalEnv)
@@ -481,26 +645,23 @@ shinyServer(function(input, output) {
         
         assign("returnObjectUnbaised", returnObjectUnbaised, .GlobalEnv)
         
-        GenomeBrowserUnbiasedSites<-c(returnObjectUnbaised$`Promoter Predicted Sites`,
-                                      returnObjectUnbaised$`Enhancer Predicted Sites`)%>%unlist()
+        mcols(returnObjectUnbaised$`Promoter Predicted Sites`) <- cbind.data.frame(mcols(returnObjectUnbaised$`Promoter Predicted Sites`),
+                                                                                   "Regulatory Module" = "Promoter")
+        
+        mcols(returnObjectUnbaised$`Enhancer Predicted Sites`) <- cbind.data.frame(mcols(returnObjectUnbaised$`Enhancer Predicted Sites`),
+                                                                                   "Regulatory Module" = "Enhancer")
+        
+        GenomeBrowserUnbiasedSites <- c(returnObjectUnbaised$`Promoter Predicted Sites`,
+                                        returnObjectUnbaised$`Enhancer Predicted Sites`)%>%unlist()
         
         assign("PredictedTFBS", GenomeBrowserUnbiasedSites, .GlobalEnv)
       }
       
-      PromoterPredictedSites <- UnbiasedMotifsPredicted$`Promoters With Gene Targets`%>%as.data.frame()
+      PromoterPredictedSites <-   GenomeBrowserUnbiasedSites%>%as.data.frame()
     })
   } )
   
   
-  
-  output$EnhancerPredictedSites<-renderDataTable({
-    
-    input$ComputeTranscriptionFactorSites
-    
-    isolate({
-      EnhancerPredictedSites <- UnbiasedMotifsPredicted$`Enhancers With Gene Targets`%>%as.data.frame()
-    })
-  })
   
   
   
@@ -525,6 +686,13 @@ shinyServer(function(input, output) {
     isolate({
       
       if(!exists("chrM")){
+        
+        
+        GenomeBrowserTFMatrix <- matrixForMatching
+        
+        assign("GenomeBrowserTFMatrix", GenomeBrowserTFMatrix, .GlobalEnv)
+        
+        
         ###############################################################################################
         ###Genome browser part for when you change chromosomes
         ##############################################################################################
@@ -576,10 +744,11 @@ shinyServer(function(input, output) {
         
         
         
-        EnhancersHumanChromosomeSpecific <- EnhancersWithGeneTargetsGrange%>%subset(. ,
-                                                                                    seqnames==input$chrM)%>%AnnotationTrack(., 
-                                                                                                                            name = "Enhancers",
-                                                                                                                            genome = "hg19")
+        EnhancersHumanChromosomeSpecific <- reduce(c(reduce(permissiveEnhancer), reduce(EnhancersWithGeneTargetsGrange)))%>%
+          subset(. ,
+                 seqnames==input$chrM)%>%AnnotationTrack(., 
+                                                         name = "Enhancers",
+                                                         genome = "hg19")
         
         assign("EnhancersHumanChromosomeSpecific", EnhancersHumanChromosomeSpecific, .GlobalEnv)
         assign("promotertrackChromosomeSpecific", promotertrackChromosomeSpecific, .GlobalEnv)
@@ -600,22 +769,23 @@ shinyServer(function(input, output) {
         ###########################################################
         # Raw Motif Instances
         RawMotifInstancesTrack <- subset(genomicLocationOfMotifs, 
-                                       seqnames== input$chrM & start > input$fromM & end < input$toM)%>%AnnotationTrack(.,
-                                                                                                                      genome = "hg19",
-                                                                                                                      stacking = "dense", 
-                                                                                                                      col.line="black",
-                                                                                                                      name="All Motif Instances")
+                                         seqnames== input$chrM & start > input$fromM & end < input$toM)%>%AnnotationTrack(.,
+                                                                                                                          genome = "hg19",
+                                                                                                                          stacking = "dense", 
+                                                                                                                          col.line="black",
+                                                                                                                          name="All Motif Instances")
         assign("RawMotifInstancesTrack", RawMotifInstancesTrack, .GlobalEnv)
         
         
         # Chromosome For Predicted Motifs
-        chromatinStatesTrack <- chromHMMTrackGenerator(gen="hg19", 
+        chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
                                                      chr= input$chrM, 
                                                      from  = input$fromM,
                                                      to = input$toM,
                                                      bedFile = chromatinState,
                                                      featureDisplay = "all",
-                                                     colorcase='roadmap15')
+                                                     colorcase='roadmap15',
+                                                     name = NameOfCell)
         
         assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
         
@@ -642,7 +812,8 @@ shinyServer(function(input, output) {
                    title.width = 2, 
                    cex.main = 5, 
                    col = NULL, 
-                   fontcolor.title = "black")
+                   fontcolor.title = "black",
+                   legend=TRUE)
         
         
         ### Putting it last so that if something goes wrong, it'll re run the code when you click refresh
@@ -651,7 +822,143 @@ shinyServer(function(input, output) {
         
         
         
-      } else if(!chrM == input$chrM){ 
+      } else if(!matrixForMatching == GenomeBrowserTFMatrix) {   
+        
+        
+        
+        GenomeBrowserTFMatrix <- matrixForMatching
+        
+        assign("GenomeBrowserTFMatrix", GenomeBrowserTFMatrix, .GlobalEnv)
+        
+        
+        ###############################################################################################
+        ###Genome browser part for when you change chromosomes
+        ##############################################################################################
+        
+        chr <- input$chrM
+        
+        # Ideogram Track
+        humanIdeogramTrack <- IdeogramTrack(chromosome = chr,
+                                            genome="hg19",
+                                            name= "Ideogram")
+        
+        #Genome Axis Track for apprxoimate location
+        gHumanTrack <- GenomeAxisTrack(name= "Genomic Axis Track")
+        
+        assign("humanIdeogramTrack", humanIdeogramTrack, .GlobalEnv)
+        assign("gHumanTrack", gHumanTrack, .GlobalEnv)
+        
+        
+        ###############################################
+        ####Identifying motifs in CRM regions
+        ################################################
+        
+        
+        
+        # Gene Track with symbols :D
+        knownGenes <- GeneRegionTrack(TxDb.Hsapiens.UCSC.hg19.knownGene, 
+                                      genome="hg19", 
+                                      chromosome=input$chrM, 
+                                      showId=TRUE,
+                                      geneSymbol=TRUE, 
+                                      name="UCSC")
+        
+        symbols <- unlist(mapIds(org.Hs.eg.db, gene(knownGenes),
+                                 "SYMBOL", "ENTREZID", 
+                                 multiVals = "first"))
+        
+        symbol(knownGenes) <- symbols[gene(knownGenes)]
+        
+        assign("knownGenes", knownGenes, .GlobalEnv)
+        
+        
+        
+        #Promoter and Enhancer Tracks for each chormosome Track
+        promotertrackChromosomeSpecific <- promoterTracks%>%subset(. , 
+                                                                   seqnames==input$chrM)%>%AnnotationTrack(., 
+                                                                                                           name= "PromoterTrack", 
+                                                                                                           genome="hg19")
+        geneTrackChromosomeSpecific <- knownGenes
+        
+        
+        
+        EnhancersHumanChromosomeSpecific <- reduce(c(reduce(permissiveEnhancer), reduce(EnhancersWithGeneTargetsGrange)))%>%
+          subset(. ,
+                 seqnames==input$chrM)%>%AnnotationTrack(., 
+                                                         name = "Enhancers",
+                                                         genome = "hg19")
+        
+        assign("EnhancersHumanChromosomeSpecific", EnhancersHumanChromosomeSpecific, .GlobalEnv)
+        assign("promotertrackChromosomeSpecific", promotertrackChromosomeSpecific, .GlobalEnv)
+        assign("geneTrackChromosomeSpecific", geneTrackChromosomeSpecific, .GlobalEnv)
+        
+        #Chromosome Specific Predicted Motifs
+        PredictedTFBSTrack<-PredictedTFBS%>%subset(seqnames==input$chrM)%>%AnnotationTrack(genome = "hg19", 
+                                                                                           stacking = "dense",
+                                                                                           strand= "*",
+                                                                                           col.line="black",
+                                                                                           name="Predicted TFBS")
+        
+        
+        
+        assign("PredictedTFBSTrack", PredictedTFBSTrack, .GlobalEnv)
+        ########################################################
+        ## Re render each time anything changes
+        ###########################################################
+        # Raw Motif Instances
+        RawMotifInstancesTrack <- subset(genomicLocationOfMotifs, 
+                                         seqnames== input$chrM & start > input$fromM & end < input$toM)%>%AnnotationTrack(.,
+                                                                                                                          genome = "hg19",
+                                                                                                                          stacking = "dense", 
+                                                                                                                          col.line="black",
+                                                                                                                          name="All Motif Instances")
+        assign("RawMotifInstancesTrack", RawMotifInstancesTrack, .GlobalEnv)
+        
+        
+        # Chromosome For Predicted Motifs
+        chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
+                                                     chr= input$chrM, 
+                                                     from  = input$fromM,
+                                                     to = input$toM,
+                                                     bedFile = chromatinState,
+                                                     featureDisplay = "all",
+                                                     colorcase='roadmap15',
+                                                     name = NameOfCell)
+        
+        assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
+        
+        
+        
+        plotTracks(trackList =c(humanIdeogramTrack,
+                                gHumanTrack, 
+                                IntearctionTrack,
+                                EnhancersHumanChromosomeSpecific,
+                                PredictedTFBSTrack,
+                                RawMotifInstancesTrack, 
+                                promotertrackChromosomeSpecific, 
+                                geneTrackChromosomeSpecific,
+                                chromatinStatesTrack), 
+                   sizes= c(1,1,3,1,1,1,1,3,3),
+                   from =input$fromM, 
+                   to= input$toM,
+                   chromosome= input$chrM,
+                   cex.title = 0.72, 
+                   rotation.title = 0, 
+                   showAxis = FALSE, 
+                   background.title = "white",
+                   lwd.title = 2, 
+                   title.width = 2, 
+                   cex.main = 5, 
+                   col = NULL, 
+                   fontcolor.title = "black",
+                   legend=TRUE)
+        
+        
+        ### Putting it last so that if something goes wrong, it'll re run the code when you click refresh
+        chrM <- input$chrM
+        assign("chrM", chrM, .GlobalEnv)
+      
+        }else if(!chrM == input$chrM){ 
         
         ###############################################################################################
         ###Genome browser part for when you change chromosomes
@@ -734,15 +1041,14 @@ shinyServer(function(input, output) {
         
         
         # Chromosome For Predicted Motifs
-        
-        # Chromosome For Predicted Motifs
         chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
                                                      chr= input$chrM, 
                                                      from  = input$fromM,
                                                      to = input$toM,
                                                      bedFile = chromatinState,
                                                      featureDisplay = "all",
-                                                     colorcase='roadmap15')
+                                                     colorcase='roadmap15',
+                                                     name = NameOfCell)
         
         
         assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
@@ -794,14 +1100,14 @@ shinyServer(function(input, output) {
         
         # Chromosome For Predicted Motifs
         
-        # Chromosome For Predicted Motifs
         chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19", 
                                                      chr= input$chrM, 
                                                      from  = input$fromM,
                                                      to = input$toM,
                                                      bedFile = chromatinState,
                                                      featureDisplay = "all",
-                                                     colorcase='roadmap15')
+                                                     colorcase='roadmap15',
+                                                     name = NameOfCell)
         
         assign("chromatinStatesTrack", chromatinStatesTrack, .GlobalEnv)
         
@@ -852,7 +1158,9 @@ shinyServer(function(input, output) {
     list(
       src = "www/EpigenomicsRoadMapLegendHMM.jpeg",
       contentType = "image/jpeg",
-      alt = "Human/Epigenomics Road Map Legend"
+      alt = "Human/Epigenomics Road Map Legend",
+      width= 200,
+      height= 400
     )
     
   }, deleteFile = FALSE)
