@@ -271,9 +271,10 @@ shinyServer(function(input, output) {
   #Permissive Enhancer 
   permissiveEnhancer <- import.bed("../DataFiles/Enhancers Track/Human/human_permissive_enhancers_phase_1_and_2.bed.gz")
   
+  assign("permissiveEnhancer", permissiveEnhancer, .GlobalEnv)
   
   #Read in the table
-  EnhancerPromoterAssoications <-read_delim("../DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt.gz", 
+  EnhancerPromoterAssoications <- read_delim("../DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt.gz", 
                                             "\t", escape_double = FALSE, trim_ws = TRUE)
   
   assign("EnhancerPromoterAssoications", EnhancerPromoterAssoications, .GlobalEnv)
@@ -484,7 +485,8 @@ shinyServer(function(input, output) {
       #### Combing the promoter and enhancer motifs into a single Grange List object
       
       MotifsInPromotersAndEnhancers <- list("Promoters" = MotifsInConservedPromoterRegions,
-                                            "Enhancers" = MotifsInEnhancers)
+                                            "Enhancers" = MotifsInEnhancers,
+                                            "Permissive Enhancers" = MotifsInPermissiveEnhancers)
       
       assign("MotifsInPromotersAndEnhancers", MotifsInPromotersAndEnhancers, .GlobalEnv)
       
@@ -536,8 +538,21 @@ shinyServer(function(input, output) {
       ActiveChromatinRegions <- chromatinState[chromatinState$abbr %in% ActiveChromatinStates,]
       
       #Overlap active reginos with motifs in CRMs giving us a completely unbiased set of results
-      UnbiasedPredictedMotifs <- lapply(MotifsInPromotersAndEnhancers,function(x){subsetByOverlaps( x,
-                                                                                                    ActiveChromatinRegions)})
+      UnbiasedPredictedMotifs <- lapply(MotifsInPromotersAndEnhancers,function(x){
+        
+        
+        OverlapBetweenRangesObject <- findOverlaps( x , ActiveChromatinRegions)
+        
+        EpigenomicLocation <- ActiveChromatinRegions$name[OverlapBetweenRangesObject%>%subjectHits()]
+        
+        OrderingQueryGRange <- x [OverlapBetweenRangesObject%>%queryHits()]
+        
+        mcols(OrderingQueryGRange) <- cbind.data.frame(mcols(OrderingQueryGRange),
+                                                       "Epigenomic Location" = EpigenomicLocation)
+        
+        OrderingQueryGRange
+        
+      })
       
       assign("UnbiasedPredictedMotifs", UnbiasedPredictedMotifs, .GlobalEnv )
       
@@ -571,7 +586,7 @@ shinyServer(function(input, output) {
       
       mcols(MotifsInEnhancers) <- cbind.data.frame(mcols(MotifsInEnhancers), EnhancerTargets)
       
-      EnhancerMotifsNotTargeted <- MotifsInPermissiveEnhancers[!MotifsInPermissiveEnhancers %in% MotifsInEnhancers ]
+      EnhancerMotifsNotTargeted <- UnbiasedPredictedMotifs$`Permissive Enhancers`[!UnbiasedPredictedMotifs$`Permissive Enhancers` %in% MotifsInEnhancers ]
       
       mcols(EnhancerMotifsNotTargeted) <- cbind.data.frame(mcols(EnhancerMotifsNotTargeted),
                                                            "Genes Regulated" = "NA",
@@ -608,7 +623,7 @@ shinyServer(function(input, output) {
         
         
         ##Genes who showed differenital expression with promoter targets
-        promoterTargetsOfTF <- subset(UnbiasedMotifsPredicted$`Promoters With Gene Targets` ,
+        promoterTargetsOfTF <- subset(UnbiasedMotifsPredicted$`Promoters With Gene Targets`,
                                       `Genes Regulated` %in% differenitallyExpressedGenesList[,1]) 
         
         
@@ -619,18 +634,19 @@ shinyServer(function(input, output) {
         returnObjectDifferentialSites <- c("Promoter Predicted Sites" = promoterTargetsOfTF,
                                            "Enhancer Predicted Sites" = enhancerTargetsOfTF)%>%unlist()
         
-        mcols(returnObjectUnbaised$`Promoter Predicted Sites`) <- cbind.data.frame(mcols(returnObjectUnbaised$`Promoter Predicted Sites`),
-                                                                                   "Regulatory Module" = "Promoter")
+        mcols(returnObjectDifferentialSites$`Promoter Predicted Sites`) <- cbind.data.frame(mcols(returnObjectDifferentialSites$`Promoter Predicted Sites`),
+                                                                                   "Regulatory Module" = rep("Promoter",
+                                                                                                             length(returnObjectDifferentialSites$`Promoter Predicted Sites`)))
         
-        mcols(returnObjectUnbaised$`Enhancer Predicted Sites`) <- cbind.data.frame(mcols(returnObjectUnbaised$`Enhancer Predicted Sites`),
-                                                                                   "Regulatory Module" = "Enhancer")
+        mcols(returnObjectDifferentialSites$`Enhancer Predicted Sites`) <- cbind.data.frame(mcols(returnObjectDifferentialSites$`Enhancer Predicted Sites`),
+                                                                                   "Regulatory Module" = rep("Enhancer",
+                                                                                                             length(returnObjectDifferentialSites$`Enhancer Predicted Sites`)))
         
-        GenomeBrowserUnbiasedSites <- c(returnObjectUnbaised$`Promoter Predicted Sites`,
-                                        returnObjectUnbaised$`Enhancer Predicted Sites`)%>%unlist()
+        GenomeBrowserUnbiasedSites <- c(returnObjectDifferentialSites$`Promoter Predicted Sites`,
+                                        returnObjectDifferentialSites$`Enhancer Predicted Sites`)%>%unlist()
         
         assign("PredictedTFBS", GenomeBrowserUnbiasedSites, .GlobalEnv)
-        
-        assign("PredictedTFBS", returnObjectDifferentialSites, .GlobalEnv)
+    
         assign("returnObjectDifferentialSites", returnObjectDifferentialSites, .GlobalEnv)
         
       }
@@ -646,10 +662,12 @@ shinyServer(function(input, output) {
         assign("returnObjectUnbaised", returnObjectUnbaised, .GlobalEnv)
         
         mcols(returnObjectUnbaised$`Promoter Predicted Sites`) <- cbind.data.frame(mcols(returnObjectUnbaised$`Promoter Predicted Sites`),
-                                                                                   "Regulatory Module" = "Promoter")
+                                                                                   "Regulatory Module" = rep("Promoter",
+                                                                                                             length(returnObjectUnbaised$`Promoter Predicted Sites`)))
         
         mcols(returnObjectUnbaised$`Enhancer Predicted Sites`) <- cbind.data.frame(mcols(returnObjectUnbaised$`Enhancer Predicted Sites`),
-                                                                                   "Regulatory Module" = "Enhancer")
+                                                                                   "Regulatory Module" = rep("Enhancer",
+                                                                                                             length(returnObjectUnbaised$`Enhancer Predicted Sites`)))
         
         GenomeBrowserUnbiasedSites <- c(returnObjectUnbaised$`Promoter Predicted Sites`,
                                         returnObjectUnbaised$`Enhancer Predicted Sites`)%>%unlist()
@@ -957,8 +975,8 @@ shinyServer(function(input, output) {
         ### Putting it last so that if something goes wrong, it'll re run the code when you click refresh
         chrM <- input$chrM
         assign("chrM", chrM, .GlobalEnv)
-      
-        }else if(!chrM == input$chrM){ 
+        
+      }else if(!chrM == input$chrM){ 
         
         ###############################################################################################
         ###Genome browser part for when you change chromosomes
