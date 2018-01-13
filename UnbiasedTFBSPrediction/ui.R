@@ -1365,11 +1365,26 @@ dashboardPage(
 
     
     tabPanel("Gene Ontology",
-             box(actionButton("GeneOntology", "Compute Gene Ontology Results"), width= 3, height= 600),
+             box( 
+           
+                 
+                 actionButton("GeneOntology", "Re-compute Gene Ontology Results"),
+                 p("Click me if the transcription Factor or Cell type changes."),
+                 selectInput("OntologyType", "Gene Ontology Type", list("Molecular Function" = "MF",
+                                                                        "Biological Processes" = "BP",
+                                                                        "Cellular Component" = "CC"), 
+                             selected = "BP", 
+                             multiple = TRUE,
+                             selectize = TRUE),
+                 sliderInput("GeneOntologyPValueCutOff", "Adjusted P value Cut off", min = 0, max= 1, value = 0.05),
+                 sliderInput("GeneOntologyRawPvalue", "P value Cut off", min = 0, max= 1, value = 0.05),
+                 numericInput("GeneOntologyNumeric", label = "Minimum Number of Terms", value = 0),
+                 
+                 width= 3, height= 600),
              
              
              box( title = "Gene Ontology Results", width = 9,
-             withSpinner(dataTableOutput("GeneOntologyResults"),
+             withSpinner(dataTableOutput("GeneOntologyTableResults"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
                          color.background = getOption("spinner.color.background", default = "#FFFFFF"))), height= 600)
