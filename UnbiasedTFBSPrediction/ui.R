@@ -1295,14 +1295,13 @@ dashboardPage(
           
                     width = 4, height = 700),
              
-             
-               box(title = "Visualize the Position Weight Matrix", collapsible = TRUE, width= 8, height = 500,
-             withSpinner(plotOutput("VisualizeTFMotif"),
+             box(title = "Position Weight Matrix", 
+             fluidRow(withSpinner(plotOutput("VisualizeTFMotif"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
                          color.background = getOption("spinner.color.background", default = "#FFFFFF"))),
-             box("Download The Genomic Predicted Files as Bed",
                  br(),
+             h3("Downloads"),
                  column( 3 ,
                          fluidRow(downloadButton('rawMotifPositions', 'Download all
                                                  motifs')),
@@ -1320,7 +1319,7 @@ dashboardPage(
                  
                  fluidRow(downloadButton('ProcessedMotifPositions', 'Download the 
                                           TFBS'))), 
-                 width= 8, height=200
+             collapsible = TRUE, width= 8, height = 700
              ),
              
   
