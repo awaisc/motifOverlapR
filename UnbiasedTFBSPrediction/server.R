@@ -74,7 +74,7 @@ shinyServer(function(input, output) {
     } else if(input$TypeInSequence==TRUE){
 
 
-      TranscriptionFactor<-round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) %T>%seqLogo()
+      TranscriptionFactor <- round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) %T>%seqLogo()
 
       assign("matrixForMatching", TranscriptionFactor, .GlobalEnv)
 
@@ -88,7 +88,7 @@ shinyServer(function(input, output) {
          apply(MARGIN = 2, function(x){x / sum(x)}))%>%seqLogo()
 
 
-      JasparMatrixForMatching<-JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix
+      JasparMatrixForMatching <- JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix
       assign("matrixForMatching", JasparMatrixForMatching, .GlobalEnv)
     }
   })
@@ -108,6 +108,8 @@ shinyServer(function(input, output) {
       end.field="hg19.knownGene.txEnd",
       strand.field="hg19.knownGene.strand",
       starts.in.df.are.0based=FALSE)%>%promoters()
+  
+  
   assign("promoterTracks", promoterTracks, .GlobalEnv)
 
 
@@ -383,9 +385,9 @@ shinyServer(function(input, output) {
       assign("TranscriptionFactorPWM", matrixForMatching, .GlobalEnv )
 
 
-      genomicLocationOfMotifs<-matchPWM(matrixForMatching,
+      genomicLocationOfMotifs <- matchPWM(matrixForMatching,
                                         BSgenome.Hsapiens.UCSC.hg19,
-                                        input$MatchPercentage)
+                                        paste0(input$MatchPercentage,'%'))
 
       assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
 
@@ -678,10 +680,66 @@ shinyServer(function(input, output) {
       
       PromoterPredictedSites <-   GenomeBrowserUnbiasedSites%>%as.data.frame()
       
+      assign("PromoterPredictedSites", PromoterPredictedSites, .GlobalEnv )
+      
+      
+      
+      
+     
+    
+      
     })
   } )
 
 
+ 
+      ##################################################################
+      #### Download Exports
+      ##################################################################
+
+  output$rawMotifPositions <- downloadHandler('rawMotifGenomicPositions.bed', content = function(file) {
+    write.table(as.data.frame(genomicLocationOfMotifs), file  ,
+                sep="\t",
+                row.names = FALSE,
+                col.names = FALSE,
+                quote = FALSE,
+                append = FALSE)
+  })    
+  
+  
+  output$returnObjectUnbaised <- downloadHandler('UnbiasedGenomicPositions.bed', content = function(file) {
+    write.table( PromoterPredictedSites, file  ,
+                 sep="\t",
+                 row.names = FALSE,
+                 col.names = FALSE,
+                 quote = FALSE,
+                 append = FALSE)
+  })
+  
+  
+  output$ProcessedMotifPositions <- downloadHandler('ProcessedGenomicPositions.bed', content = function(file) {
+    write.table( PromoterPredictedSites, file  ,
+                sep="\t",
+                row.names = FALSE,
+                col.names = FALSE,
+                quote = FALSE,
+                append = FALSE)
+    })
+    
+  
+  output$RegualtoryModuleMotifs <- downloadHandler('ProcessedGenomicPositions.bed', content = function(file) {
+    
+    RegulatoryModuleDataFrame <- rbind.data.frame(as.data.frame(MotifsInPromotersAndEnhancers$Promoters),
+    as.data.frame(MotifsInPromotersAndEnhancers$`Permissive Enhancers`))
+    
+    
+    write.table(   RegulatoryModuleDataFrame, file  ,
+                 sep="\t",
+                 row.names = FALSE,
+                 col.names = FALSE,
+                 quote = FALSE,
+                 append = FALSE)
+  })
 
 
 
@@ -695,12 +753,7 @@ shinyServer(function(input, output) {
 
 
 
-
-
-
-
-
-  output$GenomeBrowser<-renderPlot({
+  output$GenomeBrowser <- renderPlot({
 
     input$GenomeBrowserAction
     isolate({
@@ -1200,19 +1253,19 @@ shinyServer(function(input, output) {
   #######################################
 
 
+  ## Biomart Object
      human_mart <- biomaRt::useMart("ENSEMBL_MART_ENSEMBL",
                                      dataset = "hsapiens_gene_ensembl")
 
       assign("human_mart", human_mart, .GlobalEnv)
 
+      
+      ## Get the gene Ids for all Symbols 
             uniservser <- getBM(attributes = c("ucsc", "entrezgene", "external_gene_name"),
                           mart = human_mart)
 
       assign("uniservser", uniservser, .GlobalEnv)
 
-
-
-      
       
       ##############################################
       # Data Table setup Click if Tf changes
@@ -1229,22 +1282,17 @@ shinyServer(function(input, output) {
       
       
 
-      ## Re run incase the Transcription Factor Changes
+      ## Gene List
       geneListToConvert <- unique(c(as.character(UnbiasedMotifsPredicted$`Promoters With Gene Targets`$`UCSC Transcript ID`),
                        as.character(UnbiasedMotifsPredicted$`Enhancers With Gene Targets`$`UCSC Transcript ID`)))
-      
-      
-      
-      
+
       assign("geneListToConvert", geneListToConvert, .GlobalEnv)
-
-
-
-
-      ucscToEntrez <- getBM(attributes = c("ucsc", "entrezgene", "external_gene_name"),
-                            filters = "ucsc",
-                            values = list(geneListToConvert),
-                            mart = human_mart)
+      
+      
+      
+      
+      ## Entrez Ids for uniservers  
+      ucscToEntrez <- uniservser [uniservser$ucsc %in%  geneListToConvert,]
 
       assign("ucscToEntrez", ucscToEntrez, .GlobalEnv)
 
@@ -1270,10 +1318,13 @@ shinyServer(function(input, output) {
                                "P Value"))
 
 
-      test <- lapply( GeneOntologyResultsSorted$`GO ID`, function(val) {
+      quickGoHtmlButton <- lapply( GeneOntologyResultsSorted$`GO ID`, function(val) {
+        
         paste0('<a href="https://www.ebi.ac.uk/QuickGO/term/', val,'"','target="_blank" class="btn btn-primary">', val, '</a>')
+        
       })
-      GeneOntologyResultsSorted$`GO ID` <- test
+      
+      GeneOntologyResultsSorted$`GO ID` <- quickGoHtmlButton
       
       
 ########## Bon Fonerani P Value Adjustment
@@ -1304,5 +1355,9 @@ shinyServer(function(input, output) {
   GeneTable
 })
 
-}
-)
+
+      
+      
+      
+      
+      })

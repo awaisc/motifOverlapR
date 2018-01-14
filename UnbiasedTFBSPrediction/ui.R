@@ -1292,14 +1292,36 @@ dashboardPage(
                       fileInput("differenitallyExpressedGenesList", "Upload a Differentially expressed list", multiple = FALSE)
                     ),
                     actionButton("ComputeTranscriptionFactorSites", "Computationally Predict Sites"), 
+          
                     width = 4, height = 700),
              
              
-               box(title = "Visualize the Position Weight Matrix", collapsible = TRUE, width= 8, height = 700,
+               box(title = "Visualize the Position Weight Matrix", collapsible = TRUE, width= 8, height = 500,
              withSpinner(plotOutput("VisualizeTFMotif"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
                          color.background = getOption("spinner.color.background", default = "#FFFFFF"))),
+             box("Download The Genomic Predicted Files as Bed",
+                 br(),
+                 column( 3 ,
+                         fluidRow(downloadButton('rawMotifPositions', 'Download all
+                                                 motifs')),
+                         br(),
+             
+                 
+                 fluidRow(downloadButton(' RegualtoryModuleMotifs ', 'Download motifs 
+                                         in CRMs'))),
+                 column(2),
+                 
+                 column( 3 ,
+                 fluidRow(downloadButton('returnObjectUnbaised', 'Download unbiased
+                                         TFBS')),
+                 br(),
+                 
+                 fluidRow(downloadButton('ProcessedMotifPositions', 'Download the 
+                                          TFBS'))), 
+                 width= 8, height=200
+             ),
              
   
              
