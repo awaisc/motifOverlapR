@@ -1,0 +1,226 @@
+---
+title: "Figures for Paper"
+author: "Awais"
+date: "15 February 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = "FALSE", message="FALSE")
+```
+
+
+```{r}
+library(readr)
+library(VennDiagram)
+library(magrittr)
+library(rtracklayer)
+library(pander)
+```
+
+```{r, warning=FALSE, message=FALSE}
+
+ChIPSeqEnrichedRegions <- read_delim("/media/awais/NewDrivewho/Downloads/IDR_final_conservative.narrowPeak", 
+                                       "\t", escape_double = FALSE,col_names = FALSE, trim_ws = TRUE)
+
+
+MotifOverlapRPredictedSites <- read_delim("/media/awais/NewDrivewho/ChangesToMotifOverlapR/Gata4HEP2FullTable", 
+                                  "\t", escape_double = FALSE, col_names = FALSE, 
+                                  trim_ws = TRUE)
+
+
+# CRM motifs
+
+CRMMotifInstances <- read_delim("/media/awais/NewDrivewho/ChangesToMotifOverlapR/GATA4CRMMotifs.txt",
+                                "\t", escape_double = FALSE, col_names = FALSE, 
+                                trim_ws = TRUE)
+
+
+AllMotifInstances <- read_delim("/media/awais/NewDrivewho/ChangesToMotifOverlapR/GATA4HEP2AllMotifs", 
+                                "\t", escape_double = FALSE, col_names = FALSE, 
+                                trim_ws = TRUE)
+
+
+enhancers <- import("/media/awais/NewDrivewho/Downloads/human_permissive_enhancers_phase_1_and_2.bed.gz")
+promoters <- import("/media/awais/NewDrivewho/Downloads/hg.bed.gz")%>%promoters()
+```
+
+# Converting the Dataframes to Genomic Ranges
+
+```{r}
+
+ChIPSeqEnrichedRegionsGRanges <- makeGRangesFromDataFrame(ChIPSeqEnrichedRegions,
+                         keep.extra.columns=TRUE,
+                         ignore.strand=TRUE,
+                         seqinfo=NULL,
+                         seqnames.field="X1",
+                         start.field="X2",
+                         end.field="X3",
+                         strand.field="X8",
+                         starts.in.df.are.0based=FALSE)
+
+# Expaning the ChIP-enriched region by 200bp up and down stream to identify motifs in surrounding areas
+
+ChIPSeqEnrichedRegionsGRanges <- ChIPSeqEnrichedRegionsGRanges+200
+
+MotifOverlapRPredictedSitesGRanges <- makeGRangesFromDataFrame(MotifOverlapRPredictedSites,
+                         keep.extra.columns=TRUE,
+                         ignore.strand=TRUE,
+                         seqinfo=NULL,
+                         seqnames.field="X1",
+                         start.field="X2",
+                         end.field="X3",
+                         strand.field="X5",
+                         starts.in.df.are.0based=FALSE)%>%reduce()
+
+AllMotifInstancesGRanges <- makeGRangesFromDataFrame(AllMotifInstances,
+                                             keep.extra.columns=TRUE,
+                                             ignore.strand=TRUE,
+                                             seqinfo=NULL,
+                                             seqnames.field="X1",
+                                             start.field="X2",
+                                             end.field="X3",
+                                             strand.field="X5",
+                                             starts.in.df.are.0based=FALSE)
+
+
+CRMMotifInstancesGRanges <- makeGRangesFromDataFrame(CRMMotifInstances,
+                                             keep.extra.columns=TRUE,
+                                             ignore.strand=TRUE,
+                                             seqinfo=NULL,
+                                             seqnames.field="X1",
+                                             start.field="X2",
+                                             end.field="X3",
+                                             strand.field="X5",
+                                             starts.in.df.are.0based=FALSE)
+```
+
+# Lets get the overlaps between Predicted sites and ChIP-enriched regions within Regulatory modules
+
+We select for ChIP-enriched regions within Regulatory modules as these regions are usually the ones that affect gene regulation and therefore the ones we're interested/ 
+
+
+```{r}
+
+## Identifing ChIP-seq regions in regulatory modules
+# 
+# SitesInRegulatoryModules <- c(subsetByOverlaps(ChIPSeqEnrichedRegionsGRanges, enhancers),
+#                               subsetByOverlaps(ChIPSeqEnrichedRegionsGRanges, promoters) )%>% unlist()
+
+
+SitesInRegulatoryModules <- ChIPSeqEnrichedRegionsGRanges
+OverlapPredictedChIPseq <- (findOverlaps(MotifOverlapRPredictedSitesGRanges, SitesInRegulatoryModules)%>%countLnodeHits()>0)%>%sum()
+
+OverlapSequneceChIPseq <- (findOverlaps(AllMotifInstancesGRanges, SitesInRegulatoryModules)%>%countLnodeHits()>0)%>%sum()
+
+OverlapPredictedSequence <- (findOverlaps(MotifOverlapRPredictedSitesGRanges, AllMotifInstancesGRanges)%>%countLnodeHits()>0)%>%sum()
+
+OverlapCRMEnriched <- (findOverlaps(CRMMotifInstancesGRanges, SitesInRegulatoryModules)%>%countLnodeHits()>0)%>%sum()
+
+
+OverlapALL <- (subsetByOverlaps(subsetByOverlaps(MotifOverlapRPredictedSitesGRanges, AllMotifInstancesGRanges), SitesInRegulatoryModules))%>%length()
+
+
+
+```
+
+
+
+# Lets make some pretty diagrams
+
+```{r}
+
+grid.newpage()
+draw.pairwise.venn(length(MotifOverlapRPredictedSitesGRanges),
+                   length(SitesInRegulatoryModules), 
+                   OverlapPredictedChIPseq, 
+                   category = c("Predicted TFBS", "ChIP-seq identified TFBS"), 
+                   lty = rep("blank", 2), 
+                   fill = c("light blue", "green"), 
+                   alpha = rep(0.5, 2), 
+                   cat.pos = c(0, 180),
+                   euler.d = TRUE, 
+                   sep.dist = 0.03, 
+                   rotation.degree = 45)
+
+grid.newpage()
+draw.pairwise.venn(length(AllMotifInstancesGRanges),
+                   length(SitesInRegulatoryModules),
+                   OverlapSequneceChIPseq,    
+                   category = c("Sequence information only", "ChIP-seq identified TFBS"), 
+                   lty = rep("blank", 2), 
+                   fill = c("light blue", "green"), 
+                   alpha = rep(0.5, 2), 
+                   cat.pos = c(0, 180),
+                   euler.d = TRUE, 
+                   sep.dist = 0.03, 
+                   rotation.degree = 45)
+grid.newpage()
+draw.pairwise.venn(length(CRMMotifInstancesGRanges),
+                   length(SitesInRegulatoryModules),
+                   OverlapCRMEnriched,    
+                   category = c("Sequence with functional annotation", "ChIP-seq identified TFBS"), 
+                   lty = rep("blank", 2), 
+                   fill = c("light blue", "green"), 
+                   alpha = rep(0.5, 2), 
+                   cat.pos = c(0, 180),
+                   euler.d = TRUE, 
+                   sep.dist = 0.03, 
+                   rotation.degree = 45)
+
+
+
+```
+
+
+
+```{r}
+
+
+ImprovedAccuracyRelativeToSequence <- 
+  function(x){
+    
+    foldImprovement <- (subsetByOverlaps(x, SitesInRegulatoryModules)%>%length() / x%>%length()) /
+    (subsetByOverlaps(AllMotifInstancesGRanges, SitesInRegulatoryModules)%>%length () / AllMotifInstancesGRanges%>%length() )
+      
+      
+  }
+
+PercentageOfSitesThatAreTruePositives<- function(x) {
+   (subsetByOverlaps(x, SitesInRegulatoryModules)%>%length() / x%>%length())*100 
+}
+
+AccuracyRelativeToSequence <- lapply(list(AllMotifInstancesGRanges,
+         CRMMotifInstancesGRanges,
+         MotifOverlapRPredictedSitesGRanges),
+       ImprovedAccuracyRelativeToSequence)%>%rbind.data.frame()%>%set_colnames(c("Sequence", "Functional Annotation", "motifOverlapR"))
+
+cbind.data.frame("Sequence" = c(
+                length(AllMotifInstancesGRanges),
+                length(ChIPSeqEnrichedRegionsGRanges),
+                OverlapSequneceChIPseq,
+                PercentageOfSitesThatAreTruePositives(AllMotifInstancesGRanges),
+                ImprovedAccuracyRelativeToSequence(AllMotifInstancesGRanges)),
+                "CRM Sites" =
+                  c(
+                length(CRMMotifInstancesGRanges),
+                length(ChIPSeqEnrichedRegionsGRanges),
+                OverlapCRMEnriched,
+                PercentageOfSitesThatAreTruePositives(CRMMotifInstancesGRanges),
+                ImprovedAccuracyRelativeToSequence(CRMMotifInstancesGRanges)),
+                "motifOverlapR Sites" = c(
+                length(MotifOverlapRPredictedSitesGRanges),
+                length(ChIPSeqEnrichedRegionsGRanges),
+                OverlapPredictedChIPseq,
+                PercentageOfSitesThatAreTruePositives(MotifOverlapRPredictedSitesGRanges),
+                ImprovedAccuracyRelativeToSequence(MotifOverlapRPredictedSitesGRanges))
+                ) %>%set_rownames(c ("Number of motifs", 
+                                     "Number of ChIP-seq sites",
+                                     "Number of sites Predicted",
+                                     "% of predicted sites that are true positives",
+                                     "Fold enrichement over sequence alone")
+                  )%>%pander()
+
+
+
+```

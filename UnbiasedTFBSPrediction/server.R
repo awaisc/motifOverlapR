@@ -362,6 +362,18 @@ shinyServer(function(input, output) {
   CageExpressionGenomicIntearctions <- readRDS(file = "../DataFiles/Interactions/Human/EnhancerPromoterAssoicationRObject")
 
   IntearctionTrack <- CageExpressionGenomicIntearctions%>%InteractionTrack()
+  
+  
+  displayPars(IntearctionTrack) = list(col.interactions="red", 
+                                        col.anchors.fill ="blue",
+                                        col.anchors.line = "black",
+                                        interaction.dimension="height", 
+                                        interaction.measure ="counts",
+                                        plot.trans=FALSE,
+                                        plot.outside = TRUE, 
+                                        col.outside="lightblue", 
+                                        anchor.height = 0.1)
+  
 
   assign("IntearctionTrack", IntearctionTrack, .GlobalEnv)
 
@@ -718,6 +730,7 @@ shinyServer(function(input, output) {
   
   
   output$ProcessedMotifPositions <- downloadHandler('ProcessedGenomicPositions.bed', content = function(file) {
+    
     write.table( PromoterPredictedSites, file  ,
                 sep="\t",
                 row.names = FALSE,
@@ -732,8 +745,7 @@ shinyServer(function(input, output) {
     RegulatoryModuleDataFrame <- rbind.data.frame(as.data.frame(MotifsInPromotersAndEnhancers$Promoters),
     as.data.frame(MotifsInPromotersAndEnhancers$`Permissive Enhancers`))
     
-    
-    write.table(   RegulatoryModuleDataFrame, file  ,
+    write.table( RegulatoryModuleDataFrame, file  ,
                  sep="\t",
                  row.names = FALSE,
                  col.names = FALSE,
@@ -813,6 +825,9 @@ shinyServer(function(input, output) {
                                                                    seqnames==input$chrM)%>%AnnotationTrack(.,
                                                                                                            name= "PromoterTrack",
                                                                                                            genome="hg19")
+        
+        displayPars(promotertrackChromosomeSpecific) <- 
+          list(fill = "red")
         geneTrackChromosomeSpecific <- knownGenes
 
 
@@ -822,17 +837,22 @@ shinyServer(function(input, output) {
                  seqnames==input$chrM)%>%AnnotationTrack(.,
                                                          name = "Enhancers",
                                                          genome = "hg19")
+        displayPars(EnhancersHumanChromosomeSpecific) <- 
+          list(fill = "#911eb4")
 
         assign("EnhancersHumanChromosomeSpecific", EnhancersHumanChromosomeSpecific, .GlobalEnv)
         assign("promotertrackChromosomeSpecific", promotertrackChromosomeSpecific, .GlobalEnv)
         assign("geneTrackChromosomeSpecific", geneTrackChromosomeSpecific, .GlobalEnv)
 
         #Chromosome Specific Predicted Motifs
-        PredictedTFBSTrack<-PredictedTFBS%>%subset(seqnames==input$chrM)%>%AnnotationTrack(genome = "hg19",
+        PredictedTFBSTrack <- PredictedTFBS%>%subset(seqnames==input$chrM)%>%AnnotationTrack(genome = "hg19",
                                                                                            stacking = "dense",
                                                                                            strand= "*",
                                                                                            col.line="black",
                                                                                            name="Predicted TFBS")
+        
+        displayPars(PredictedTFBSTrack) <-  list(fill = "Black")
+        
 
 
 
@@ -847,6 +867,7 @@ shinyServer(function(input, output) {
                                                                                                                           stacking = "dense",
                                                                                                                           col.line="black",
                                                                                                                           name="All Motif Instances")
+        displayPars(RawMotifInstancesTrack) <-  list(fill = "grey")
         assign("RawMotifInstancesTrack", RawMotifInstancesTrack, .GlobalEnv)
 
 
@@ -868,9 +889,9 @@ shinyServer(function(input, output) {
                                 gHumanTrack,
                                 IntearctionTrack,
                                 EnhancersHumanChromosomeSpecific,
+                                promotertrackChromosomeSpecific,
                                 PredictedTFBSTrack,
                                 RawMotifInstancesTrack,
-                                promotertrackChromosomeSpecific,
                                 geneTrackChromosomeSpecific,
                                 chromatinStatesTrack),
                    sizes= c(1,1,3,1,1,1,1,3,3),
@@ -895,7 +916,7 @@ shinyServer(function(input, output) {
 
 
 
-      } else if(!matrixForMatching == GenomeBrowserTFMatrix) {
+      } else if(!identical(matrixForMatching,GenomeBrowserTFMatrix)) {
 
 
 
@@ -945,35 +966,42 @@ shinyServer(function(input, output) {
         assign("knownGenes", knownGenes, .GlobalEnv)
 
 
-
         #Promoter and Enhancer Tracks for each chormosome Track
         promotertrackChromosomeSpecific <- promoterTracks%>%subset(. ,
                                                                    seqnames==input$chrM)%>%AnnotationTrack(.,
                                                                                                            name= "PromoterTrack",
                                                                                                            genome="hg19")
+        
+        displayPars(promotertrackChromosomeSpecific) <- 
+          list(fill = "red")
         geneTrackChromosomeSpecific <- knownGenes
-
-
-
+        
+        
+        
         EnhancersHumanChromosomeSpecific <- reduce(c(reduce(permissiveEnhancer), reduce(EnhancersWithGeneTargetsGrange)))%>%
           subset(. ,
                  seqnames==input$chrM)%>%AnnotationTrack(.,
                                                          name = "Enhancers",
                                                          genome = "hg19")
-
+        displayPars(EnhancersHumanChromosomeSpecific) <- 
+          list(fill = "#911eb4")
+        
         assign("EnhancersHumanChromosomeSpecific", EnhancersHumanChromosomeSpecific, .GlobalEnv)
         assign("promotertrackChromosomeSpecific", promotertrackChromosomeSpecific, .GlobalEnv)
         assign("geneTrackChromosomeSpecific", geneTrackChromosomeSpecific, .GlobalEnv)
-
+        
         #Chromosome Specific Predicted Motifs
-        PredictedTFBSTrack<-PredictedTFBS%>%subset(seqnames==input$chrM)%>%AnnotationTrack(genome = "hg19",
-                                                                                           stacking = "dense",
-                                                                                           strand= "*",
-                                                                                           col.line="black",
-                                                                                           name="Predicted TFBS")
-
-
-
+        PredictedTFBSTrack <- PredictedTFBS%>%subset(seqnames==input$chrM)%>%AnnotationTrack(genome = "hg19",
+                                                                                             stacking = "dense",
+                                                                                             strand= "*",
+                                                                                             col.line="black",
+                                                                                             name="Predicted TFBS")
+        
+        displayPars(PredictedTFBSTrack) <-  list(fill = "Black")
+        
+        
+        
+        
         assign("PredictedTFBSTrack", PredictedTFBSTrack, .GlobalEnv)
         ########################################################
         ## Re render each time anything changes
@@ -985,8 +1013,8 @@ shinyServer(function(input, output) {
                                                                                                                           stacking = "dense",
                                                                                                                           col.line="black",
                                                                                                                           name="All Motif Instances")
+        displayPars(RawMotifInstancesTrack) <-  list(fill = "grey")
         assign("RawMotifInstancesTrack", RawMotifInstancesTrack, .GlobalEnv)
-
 
         # Chromosome For Predicted Motifs
         chromatinStatesTrack<-chromHMMTrackGenerator(gen="hg19",
@@ -1006,13 +1034,13 @@ shinyServer(function(input, output) {
                                 gHumanTrack,
                                 IntearctionTrack,
                                 EnhancersHumanChromosomeSpecific,
+                                promotertrackChromosomeSpecific,
                                 PredictedTFBSTrack,
                                 RawMotifInstancesTrack,
-                                promotertrackChromosomeSpecific,
                                 geneTrackChromosomeSpecific,
                                 chromatinStatesTrack),
                    sizes= c(1,1,3,1,1,1,1,3,3),
-                   from =input$fromM,
+                   from = input$fromM,
                    to= input$toM,
                    chromosome= input$chrM,
                    cex.title = 0.72,
@@ -1025,7 +1053,6 @@ shinyServer(function(input, output) {
                    col = NULL,
                    fontcolor.title = "black",
                    legend=TRUE)
-
 
         ### Putting it last so that if something goes wrong, it'll re run the code when you click refresh
         chrM <- input$chrM
@@ -1073,43 +1100,57 @@ shinyServer(function(input, output) {
         assign("knownGenes", knownGenes, .GlobalEnv)
 
 
-
         #Promoter and Enhancer Tracks for each chormosome Track
         promotertrackChromosomeSpecific <- promoterTracks%>%subset(. ,
-                                                                   seqnames==input$chrM)%>%AnnotationTrack(., name= "PromoterTrack",
+                                                                   seqnames==input$chrM)%>%AnnotationTrack(.,
+                                                                                                           name= "PromoterTrack",
                                                                                                            genome="hg19")
+        
+        
+        displayPars(promotertrackChromosomeSpecific) <- 
+          list(fill = "red")
         geneTrackChromosomeSpecific <- knownGenes
-
-
-
-        EnhancersHumanChromosomeSpecific <- EnhancersWithGeneTargetsGrange%>%subset(. ,
-                                                                                    seqnames==input$chrM)%>%AnnotationTrack(., name = "Enhancers",
-                                                                                                                            genome = "hg19")
-
+        
+        
+        
+        EnhancersHumanChromosomeSpecific <- reduce(c(reduce(permissiveEnhancer), reduce(EnhancersWithGeneTargetsGrange)))%>%
+          subset(. ,
+                 seqnames==input$chrM)%>%AnnotationTrack(.,
+                                                         name = "Enhancers",
+                                                         genome = "hg19")
+        displayPars(EnhancersHumanChromosomeSpecific) <- 
+          list(fill = "#911eb4")
+        
         assign("EnhancersHumanChromosomeSpecific", EnhancersHumanChromosomeSpecific, .GlobalEnv)
         assign("promotertrackChromosomeSpecific", promotertrackChromosomeSpecific, .GlobalEnv)
         assign("geneTrackChromosomeSpecific", geneTrackChromosomeSpecific, .GlobalEnv)
-
+        
         #Chromosome Specific Predicted Motifs
         PredictedTFBSTrack <- PredictedTFBS%>%subset(seqnames==input$chrM)%>%AnnotationTrack(genome = "hg19",
                                                                                              stacking = "dense",
                                                                                              strand= "*",
                                                                                              col.line="black",
                                                                                              name="Predicted TFBS")
-
-
-
+        
+        displayPars(PredictedTFBSTrack) <-  list(fill = "Black")
+        
+        
+        
+        
         assign("PredictedTFBSTrack", PredictedTFBSTrack, .GlobalEnv)
+        
+        
         ########################################################
         ## Re render each time anything changes
         ###########################################################
         # Raw Motif Instances
-        RawMotifInstancesTrack<-subset(genomicLocationOfMotifs,
-                                       seqnames==input$chrM & start > input$fromM & end< input$toM)%>%AnnotationTrack(.,
-                                                                                                                      genome = "hg19",
-                                                                                                                      stacking = "dense",
-                                                                                                                      col.line="black",
-                                                                                                                      name="All Motif Instances")
+        RawMotifInstancesTrack <- subset(genomicLocationOfMotifs,
+                                         seqnames== input$chrM & start > input$fromM & end < input$toM)%>%AnnotationTrack(.,
+                                                                                                                          genome = "hg19",
+                                                                                                                          stacking = "dense",
+                                                                                                                          col.line="black",
+                                                                                                                          name="All Motif Instances")
+        displayPars(RawMotifInstancesTrack) <-  list(fill = "grey")
         assign("RawMotifInstancesTrack", RawMotifInstancesTrack, .GlobalEnv)
 
 
@@ -1132,15 +1173,15 @@ shinyServer(function(input, output) {
                                 gHumanTrack,
                                 IntearctionTrack,
                                 EnhancersHumanChromosomeSpecific,
+                                promotertrackChromosomeSpecific,
                                 PredictedTFBSTrack,
                                 RawMotifInstancesTrack,
-                                promotertrackChromosomeSpecific,
                                 geneTrackChromosomeSpecific,
                                 chromatinStatesTrack),
                    sizes= c(1,1,3,1,1,1,1,3,3),
-                   from =input$fromM,
-                   to= input$toM,
-                   chromosome= input$chrM,
+                   from =24500000,
+                   to= 25000000,
+                   chromosome= "chrX",
                    cex.title = 0.72,
                    rotation.title = 0,
                    showAxis = FALSE,
@@ -1149,8 +1190,10 @@ shinyServer(function(input, output) {
                    title.width = 2,
                    cex.main = 5,
                    col = NULL,
-                   fontcolor.title = "black")
-
+                   fontcolor.title = "black",
+                   legend=TRUE)
+        
+        
         chrM <- input$chrM
         assign("chrM", chrM, .GlobalEnv)
 
@@ -1162,14 +1205,14 @@ shinyServer(function(input, output) {
         ## Re render each time anything changes
         ###########################################################
         # Raw Motif Instances
-        RawMotifInstancesTrack<-subset(genomicLocationOfMotifs,
-                                       seqnames==input$chrM & start > input$fromM & end< input$toM)%>%AnnotationTrack(.,
-                                                                                                                      genome = "hg19",
-                                                                                                                      stacking = "dense",
-                                                                                                                      col.line="black",
-                                                                                                                      name="All Motif Instances")
+        RawMotifInstancesTrack <- subset(genomicLocationOfMotifs,
+                                         seqnames== input$chrM & start > input$fromM & end < input$toM)%>%AnnotationTrack(.,
+                                                                                                                          genome = "hg19",
+                                                                                                                          stacking = "dense",
+                                                                                                                          col.line="black",
+                                                                                                                          name="All Motif Instances")
+        displayPars(RawMotifInstancesTrack) <-  list(fill = "grey")
         assign("RawMotifInstancesTrack", RawMotifInstancesTrack, .GlobalEnv)
-
 
         # Chromosome For Predicted Motifs
 
@@ -1190,9 +1233,9 @@ shinyServer(function(input, output) {
                                 gHumanTrack,
                                 IntearctionTrack,
                                 EnhancersHumanChromosomeSpecific,
+                                promotertrackChromosomeSpecific,
                                 PredictedTFBSTrack,
                                 RawMotifInstancesTrack,
-                                promotertrackChromosomeSpecific,
                                 geneTrackChromosomeSpecific,
                                 chromatinStatesTrack),
                    sizes= c(1,1,3,1,1,1,1,3,3),
@@ -1207,11 +1250,12 @@ shinyServer(function(input, output) {
                    title.width = 2,
                    cex.main = 5,
                    col = NULL,
-                   fontcolor.title = "black")
+                   fontcolor.title = "black",
+                   legend=TRUE)
       }
 
     })
-  })
+  }, height = 625)
 
   output$DataTablePredictedSites<- renderDataTable({
 
@@ -1229,7 +1273,7 @@ shinyServer(function(input, output) {
   output$LegendsPlot<- renderImage({
 
     list(
-      src = "www/EpigenomicsRoadMapLegendHMM.jpeg",
+      src = "www/ChromatinStateLegend.png",
       contentType = "image/jpeg",
       alt = "Human/Epigenomics Road Map Legend",
       width= 200,

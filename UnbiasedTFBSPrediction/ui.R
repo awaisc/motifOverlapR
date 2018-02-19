@@ -1308,7 +1308,7 @@ dashboardPage(
                          br(),
              
                  
-                 fluidRow(downloadButton(' RegualtoryModuleMotifs ', 'Download motifs 
+                 fluidRow(downloadButton('RegualtoryModuleMotifs', 'Download motifs 
                                          in CRMs'))),
                  column(2),
                  

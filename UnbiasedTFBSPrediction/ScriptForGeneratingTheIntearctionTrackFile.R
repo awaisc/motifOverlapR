@@ -1,3 +1,9 @@
+library(GenomicInteractions)
+library(rtracklayer)
+library(magrittr)
+library(dplyr)
+library(readr)
+
 PromotersAssoicatedWithEnhancers%>%
   as.data.frame()%>%
   dplyr::select(c("seqnames", "start", "end", "enhancer", "correlation", "FDR"))%>%
