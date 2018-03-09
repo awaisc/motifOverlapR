@@ -68,24 +68,25 @@ shinyServer(function(input, output) {
 
       assign("matrixForMatching", TextTranscriptionFactor, .GlobalEnv)
 
-      seqLogo(PWMTextTranscriptionFactor)
+      seqLogo::seqLogo(PWMTextTranscriptionFactor)
 
 
     } else if(input$TypeInSequence==TRUE){
 
 
-      TranscriptionFactor <- round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) %T>%seqLogo()
+      TranscriptionFactor <- round(PWM(input$CustomDNASequence)*dim((PWM(input$CustomDNASequence)))[2]) %T>%seqLogo::seqLogo()
 
       assign("matrixForMatching", TranscriptionFactor, .GlobalEnv)
 
-    } else {
+
+    }else {
 
       ## Rewrite this because some of these matrices dont have even numbers of nucelotides for eahc position #WTF
       # OKay so the issue appears to be with repeat numbers Eg 0.333333333333333333333. NOt sure how to deal with this.
 
 
       (JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix %>%
-         apply(MARGIN = 2, function(x){x / sum(x)}))%>%seqLogo()
+         apply(MARGIN = 2, function(x){x / sum(x)}))%>%seqLogo::seqLogo()
 
 
       JasparMatrixForMatching <- JASPARR2016Matrices[[paste0(input$TranscriptionFactorPWM)]]@profileMatrix
@@ -391,7 +392,30 @@ shinyServer(function(input, output) {
       ###Start of the pipe Line
       ###################################################################
 
-
+      # If the user uploads a custom set of TFBS
+  if(input$CustomPredictedSites==TRUE) {
+        
+        # Extract the file path for the uploaded object
+        CustomPredictedSitesPath <- input$CustomPredictedSitesGenomicSites$datapath
+        
+        GenomicPositions<- readr::read_delim(file = CustomPredictedSitesPath,
+                                                      "\t", escape_double = FALSE, col_names = FALSE, 
+                                                      trim_ws = TRUE)%>%
+          makeGRangesFromDataFrame(.,
+                                   keep.extra.columns=FALSE, # Removing extra columns to prevent errors when merging later
+                                   ignore.strand=FALSE,
+                                   seqinfo=NULL,
+                                   seqnames.field= "X1",
+                                   start.field="X2",
+                                   end.field= "X3",
+                                   strand.field="X6",
+                                   starts.in.df.are.0based=FALSE)
+        # Assigning to motif positions
+        assign("genomicLocationOfMotifs", GenomicPositions, .GlobalEnv)
+        
+        
+      }  else {
+        
       ### Input Transcription Factor Matrix from the seqlogo function
 
       assign("TranscriptionFactorPWM", matrixForMatching, .GlobalEnv )
@@ -402,6 +426,8 @@ shinyServer(function(input, output) {
                                         paste0(input$MatchPercentage,'%'))
 
       assign("genomicLocationOfMotifs", genomicLocationOfMotifs, .GlobalEnv)
+  
+}
 
 
 

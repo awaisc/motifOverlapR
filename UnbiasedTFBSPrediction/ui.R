@@ -1145,12 +1145,16 @@ dashboardPage(
                                                                                                                        "ARALYDRAFT_495258",
                                                                                                                        "ARALYDRAFT_496250",
                                                                                                                        "ARALYDRAFT_493022",
-                                                                                                                       "ARALYDRAFT_484486"), selected= "Arnt" )),
+                                                                                                                       "ARALYDRAFT_484486"), selected= "Arx" )),
+               
+                    
+               checkboxInput("CustomPredictedSites", label = "Upload Computationally predicted TFBS", value = FALSE),
+               conditionalPanel(
+                 condition = "input.CustomPredictedSites == true",
+                 fileInput("CustomPredictedSitesGenomicSites", "Upload bed file format of the predicted sites", multiple = FALSE)),
                     
                     
-                    
-                    
-                    numericInput(inputId= "MatchPercentage", label = "Match percentage of the PWM", value = 100, min = 0, max= 100),
+                    numericInput(inputId= "MatchPercentage", label = "Match percentage of the PWM", value = 90, min = 0, max= 100),
                     
                     
                     
@@ -1285,8 +1289,11 @@ dashboardPage(
                                                                                                                    "Brain Germinal Matrix"="E070",
                                                                                                                    "Duodenum Mucosa"="E077",
                                                                                                                    "Skeletal Muscle Male"="E107",
-                                                                                                                   "Stomach Mucosa"="E110"), multiple= FALSE, selected= "E001"),
+                                                                                                                   "Stomach Mucosa"="E110"), multiple= FALSE, selected= "E009"),
                     checkboxInput("DifferentialExpressedGenes", label = "Differentially expressed genes", value = FALSE),
+               
+               
+               
                     conditionalPanel(
                       condition = "input.DifferentialExpressedGenes == true",
                       fileInput("differenitallyExpressedGenesList", "Upload a Differentially expressed list", multiple = FALSE)
