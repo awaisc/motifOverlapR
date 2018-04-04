@@ -27,10 +27,10 @@ require(limma)
 require(biomaRt)
 require(tibble)
 
-
 shinyServer(function(input, output) {
 
-
+  options(shiny.maxRequestSize = 200*1024^2)
+  
   ######################################################
   ## Querying the JASPAR data Base for the matrices and names of the TFs
   #######################################################
@@ -98,20 +98,6 @@ shinyServer(function(input, output) {
   #### Data Inputs
   ###########################################################
 
-  ##Importing Bed File for the promoter regions with gene symbol names
-  promoterTracks <- read.delim("../DataFiles/Gene Tracks/Human/hg19bedWithNames.bed.gz")%>%
-    makeGRangesFromDataFrame(
-      keep.extra.columns=TRUE,
-      ignore.strand=FALSE,
-      seqinfo=NULL,
-      seqnames.field="hg19.knownGene.chrom",
-      start.field= "hg19.knownGene.txStart",
-      end.field="hg19.knownGene.txEnd",
-      strand.field="hg19.knownGene.strand",
-      starts.in.df.are.0based=FALSE)%>%promoters()
-  
-  
-  assign("promoterTracks", promoterTracks, .GlobalEnv)
 
 
 
@@ -388,11 +374,30 @@ shinyServer(function(input, output) {
     isolate({
 
 
-      #####################################################################
-      ###Start of the pipe Line
-      ###################################################################
+      #Data Pipeline
 
-      # If the user uploads a custom set of TFBS
+
+      
+      
+      ####### Custom Data import so users can adjust the promoter regions as they please
+      
+      #########Importing Bed File for the promoter regions with gene symbol names
+      promoterTracks <- read.delim("../DataFiles/Gene Tracks/Human/hg19bedWithNames.bed.gz")%>%
+        makeGRangesFromDataFrame(
+          keep.extra.columns=TRUE,
+          ignore.strand=FALSE,
+          seqinfo=NULL,
+          seqnames.field="hg19.knownGene.chrom",
+          start.field= "hg19.knownGene.txStart",
+          end.field="hg19.knownGene.txEnd",
+          strand.field="hg19.knownGene.strand",
+          starts.in.df.are.0based=FALSE)%>%promoters(upstream = input$PromoterStart,
+                                                     downstream = input$PromoterFinish )
+      
+      
+      assign("promoterTracks", promoterTracks, .GlobalEnv)
+      
+      ###### If the user uploads a custom set of TFBS
   if(input$CustomPredictedSites==TRUE) {
         
         # Extract the file path for the uploaded object
@@ -402,7 +407,7 @@ shinyServer(function(input, output) {
                                                       "\t", escape_double = FALSE, col_names = FALSE, 
                                                       trim_ws = TRUE)%>%
           makeGRangesFromDataFrame(.,
-                                   keep.extra.columns=FALSE, # Removing extra columns to prevent errors when merging later
+                                   keep.extra.columns=TRUE, # Keep extra columns for additional info but there wont be colnames
                                    ignore.strand=FALSE,
                                    seqinfo=NULL,
                                    seqnames.field= "X1",
@@ -435,11 +440,16 @@ shinyServer(function(input, output) {
       MotifsInEnhancers <- subsetByOverlaps(genomicLocationOfMotifs ,
                                             EnhancersWithGeneTargetsGrange)
 
+      mcols(MotifsInEnhancers) <- cbind.data.frame(mcols(MotifsInEnhancers), "CRM"="Enhancer")
+      
       MotifsInPermissiveEnhancers <- subsetByOverlaps(genomicLocationOfMotifs,
                                                       permissiveEnhancer)
+      mcols(MotifsInPermissiveEnhancers) <- cbind.data.frame(mcols(MotifsInPermissiveEnhancers), "CRM"="Enhancer")
 
+      # Used to identify which regions of the conserved bigwig file to import
       MotifsInPromoters <- subsetByOverlaps(genomicLocationOfMotifs,
-                                            promoterTracks)
+                                            promoterTracks)%>%reduce()
+      
 
       if(input$Conserved == TRUE){
 
@@ -507,6 +517,7 @@ shinyServer(function(input, output) {
           MotifsInConservedPromoterRegions <- subset(MotifsInPromoters,
                                                      countOverlaps(MotifsInPromoters,
                                                                    ConservedRegionsInPromoters)>=genomicLocationOfMotifs$string[[1]]%>%length)
+          mcols(MotifsInConservedPromoterRegions) <- cbind.data.frame(mcols(MotifsInConservedPromoterRegions), "CRM"="Promoter")
 
 
         }
@@ -519,6 +530,7 @@ shinyServer(function(input, output) {
 
         # If we are not looking for conserved promoter regions
         MotifsInConservedPromoterRegions <- subsetByOverlaps(genomicLocationOfMotifs, promoterTracks)
+        mcols(MotifsInConservedPromoterRegions) <- cbind.data.frame(mcols(MotifsInConservedPromoterRegions), "CRM"="Promoter")
 
       }
 
@@ -556,7 +568,7 @@ shinyServer(function(input, output) {
 
       ## Name for the chromHMM Track Down Stream
 
-      NameOfCell <- subset(EpigenoomicsConverter, `Epigenomic Road Map`==CellTypeToPredict)$`Name Of Cell`
+      NameOfCell <- subset(EpigenoomicsConverter, `Epigenomic Road Map`== CellTypeToPredict)$`Name Of Cell`
 
       assign("NameOfCell", NameOfCell, .GlobalEnv)
 
@@ -569,7 +581,6 @@ shinyServer(function(input, output) {
                                  "2_TssAFlnk",
                                  "5_TxWk",
                                  "4_Tx",
-                                 "8_ZNF/Rpts",
                                  "6_EnhG",
                                  "12_EnhBiv",
                                  "3_TxFlnk")
@@ -590,7 +601,7 @@ shinyServer(function(input, output) {
         mcols(OrderingQueryGRange) <- cbind.data.frame(mcols(OrderingQueryGRange),
                                                        "Epigenomic Location" = EpigenomicLocation)
 
-        OrderingQueryGRange
+        return(OrderingQueryGRange)
 
       })
 
@@ -686,8 +697,8 @@ shinyServer(function(input, output) {
                                         returnObjectDifferentialSites$`Enhancer Predicted Sites`)%>%unlist()
 
         assign("PredictedTFBS", GenomeBrowserUnbiasedSites, .GlobalEnv)
-
-        assign("returnObjectDifferentialSites", returnObjectDifferentialSites, .GlobalEnv)
+        
+        assign("TranscriptomicFiltered", GenomeBrowserUnbiasedSites, .GlobalEnv)
 
       }
       else {
@@ -695,7 +706,7 @@ shinyServer(function(input, output) {
         ## Returning unbiased results without transcriptomic data
 
 
-        returnObjectUnbaised<-c(
+        returnObjectUnbaised <- c(
           "Promoter Predicted Sites"= UnbiasedMotifsPredicted$`Enhancers With Gene Targets`,
           "Enhancer Predicted Sites"= UnbiasedMotifsPredicted$`Promoters With Gene Targets` )%>%unlist()
 
@@ -711,19 +722,15 @@ shinyServer(function(input, output) {
 
         GenomeBrowserUnbiasedSites <- c(returnObjectUnbaised$`Promoter Predicted Sites`,
                                         returnObjectUnbaised$`Enhancer Predicted Sites`)%>%unlist()
+        
+        assign("TranscriptomicFiltered", GenomeBrowserUnbiasedSites, .GlobalEnv)
 
         assign("PredictedTFBS", GenomeBrowserUnbiasedSites, .GlobalEnv)
       }
 
-      
-      PromoterPredictedSites <-   GenomeBrowserUnbiasedSites%>%as.data.frame()
-      
-      assign("PromoterPredictedSites", PromoterPredictedSites, .GlobalEnv )
-      
-      
-      
-      
-     
+#Printing the table 
+      PredictedTFBSTable <- as.data.frame(PredictedTFBS)
+      PredictedTFBSTable
     
       
     })
@@ -744,33 +751,13 @@ shinyServer(function(input, output) {
                 append = FALSE)
   })    
   
-  
-  output$returnObjectUnbaised <- downloadHandler('UnbiasedGenomicPositions.bed', content = function(file) {
-    write.table( PromoterPredictedSites, file  ,
-                 sep="\t",
-                 row.names = FALSE,
-                 col.names = FALSE,
-                 quote = FALSE,
-                 append = FALSE)
-  })
-  
-  
-  output$ProcessedMotifPositions <- downloadHandler('ProcessedGenomicPositions.bed', content = function(file) {
+  output$RegualtoryModuleMotifs <- downloadHandler('CRMMotifs.bed', content = function(file) {
     
-    write.table( PromoterPredictedSites, file  ,
-                sep="\t",
-                row.names = FALSE,
-                col.names = FALSE,
-                quote = FALSE,
-                append = FALSE)
-    })
-    
-  
-  output$RegualtoryModuleMotifs <- downloadHandler('ProcessedGenomicPositions.bed', content = function(file) {
-    
-    RegulatoryModuleDataFrame <- rbind.data.frame(as.data.frame(MotifsInPromotersAndEnhancers$Promoters),
-    as.data.frame(MotifsInPromotersAndEnhancers$`Permissive Enhancers`))
-    
+    RegulatoryModuleDataFrame <- rbind.data.frame(
+      # Only using the Permissive enhancer motifs as the CAGE enhancer-promoter motifs are duplicates of this track and there are not needed
+      as.data.frame(MotifsInPromotersAndEnhancers$Promoters)%>%mutate("CRM"= "Promoter"),
+      as.data.frame(MotifsInPromotersAndEnhancers$`Permissive Enhancers`)%>%mutate("CRM"= "Enhancer")
+    )
     write.table( RegulatoryModuleDataFrame, file  ,
                  sep="\t",
                  row.names = FALSE,
@@ -778,9 +765,40 @@ shinyServer(function(input, output) {
                  quote = FALSE,
                  append = FALSE)
   })
+  
+  output$returnObjectUnbaised <- downloadHandler('EpigneomicFiltered.bed', content = function(file) {
+    write.table( rbind.data.frame(as.data.frame(UnbiasedMotifsPredicted$`Promoters With Gene Targets`),
+                                  as.data.frame(UnbiasedMotifsPredicted$`Enhancers With Gene Targets`)), file  ,
+                 sep="\t",
+                 row.names = FALSE,
+                 col.names = FALSE,
+                 quote = FALSE,
+                 append = FALSE)
+  })
+  
+  
+  output$TranscriptomicFiltered <- downloadHandler('TranscriptomicFiltered.bed', content = function(file) {
+    
+    write.table( as.data.frame(PredictedTFBS), file  ,
+                sep="\t",
+                row.names = FALSE,
+                col.names = FALSE,
+                quote = FALSE,
+                append = FALSE)
+    })
+    
 
 
-
+  output$ReducedTFBS <- downloadHandler('DeduplicatedFullyFilteredTFBS.bed', content = function(file) {
+    
+    write.table( PredictedTFBS%>%reduce()%>%as.data.frame(), file  ,
+                 sep="\t",
+                 row.names = FALSE,
+                 col.names = FALSE,
+                 quote = FALSE,
+                 append = FALSE)
+  })
+  
 
 
 
@@ -1418,6 +1436,8 @@ shinyServer(function(input, output) {
 
       output$GeneOntologyTableResults <- renderDataTable({
   
+        input$GeneOntology
+        
   GeneTable <- filter(GeneOntologyResultsSorted, `Number of DE Genes In Term` >= input$GeneOntologyNumeric &
            `Ontology Type` %in% input$OntologyType & `Adj P Value` <= input$GeneOntologyPValueCutOff & `P Value` <= input$GeneOntologyRawPvalue
          )

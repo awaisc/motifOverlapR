@@ -1,0 +1,138 @@
+---
+title: "UnbiasedResults"
+author: "Awais Choudhry"
+date: "2 April 2018"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message = FALSE)
+```
+
+
+## Libraries
+```{r}
+library(readr)
+library(rtracklayer)
+library(magrittr)
+library(pander)
+library(biomaRt)
+library(readxl)
+```
+
+```{r}
+
+rawPeaks  <- read_delim("~/GATA4/rawMotifPositions", 
+    "\t", escape_double = FALSE, col_names = FALSE, 
+    trim_ws = TRUE)%>%
+      makeGRangesFromDataFrame(.,
+                                   keep.extra.columns=TRUE, # Keep extra columns for additional info but there wont be colnames
+                                   ignore.strand=FALSE,
+                                   seqinfo=NULL,
+                                   seqnames.field= "X1",
+                                   start.field="X2",
+                                   end.field= "X3",
+                                   strand.field="X6",
+                                   starts.in.df.are.0based=FALSE)
+
+
+CrMPeaks <- read_delim("~/GATA4/RegualtoryModuleMotifs", 
+    "\t", escape_double = FALSE, col_names = FALSE, 
+    trim_ws = TRUE)%>%
+      makeGRangesFromDataFrame(.,
+                                   keep.extra.columns=TRUE, # Keep extra columns for additional info but there wont be colnames
+                                   ignore.strand=FALSE,
+                                   seqinfo=NULL,
+                                   seqnames.field= "X1",
+                                   start.field="X2",
+                                   end.field= "X3",
+                                   strand.field="X6",
+                                   starts.in.df.are.0based=FALSE)%>%
+  reduce() # Merging adjcanet ranges and duplicate columns
+
+
+
+
+unbiasedPeaks <- read_delim("~/GATA4/returnObjectUnbaised", 
+    "\t", escape_double = FALSE, col_names = FALSE, 
+    trim_ws = TRUE)%>%
+      makeGRangesFromDataFrame(.,
+                                   keep.extra.columns=TRUE, # Keep extra columns for additional info but there wont be colnames
+                                   ignore.strand=FALSE,
+                                   seqinfo=NULL,
+                                   seqnames.field= "X1",
+                                   start.field="X2",
+                                   end.field= "X3",
+                                   strand.field="X6",
+                                   starts.in.df.are.0based=FALSE)%>%
+  reduce()
+
+
+TranscriptomicPeaks <- read_delim("~/GATA4/TranscriptomicProcessedMotifs", 
+    "\t", escape_double = FALSE, col_names = FALSE, 
+    trim_ws = TRUE)%>%
+      makeGRangesFromDataFrame(.,
+                                   keep.extra.columns=TRUE, # Keep extra columns for additional info but there wont be colnames
+                                   ignore.strand=FALSE,
+                                   seqinfo=NULL,
+                                   seqnames.field= "X1",
+                                   start.field="X2",
+                                   end.field= "X3",
+                                   strand.field="X6",
+                                   starts.in.df.are.0based=FALSE)%>%
+  reduce()# Merging adjcanet ranges and duplicate columns
+
+cbind.data.frame(
+  "Number of Raw motifs" = c(length(rawPeaks),
+                             length(rawPeaks)-length(rawPeaks),
+                             length(rawPeaks)-length(rawPeaks)),
+  
+  "Number of Motifs in CRMs" = c(length(CrMPeaks),
+                                 length(rawPeaks)-length(CrMPeaks),
+                                  length(rawPeaks)-length(CrMPeaks)),
+  
+  "Number of Motifs in Active Genomic Regions" = c(length(unbiasedPeaks),
+                                                   length(rawPeaks)-length(unbiasedPeaks),
+                                                    length(CrMPeaks)-length(unbiasedPeaks)),
+  
+   "Number of motifs in active TFBSs" = c(length(TranscriptomicPeaks),
+                                                   length(rawPeaks)-length(TranscriptomicPeaks),
+                                           length(unbiasedPeaks)-length(TranscriptomicPeaks))
+  
+)%>%set_rownames(c("Number of TFBSs", "Number of total sites filtered", "Number of additional sites filtered"))%>%
+  pander(split.table=100)
+
+
+
+```
+
+
+```{r}
+
+# Read in the DE geneList
+GATA4DEGenes <- readxl::read_xlsx("/media/awais/NewDrivewho/Downloads/JCI93488.sdt1.xlsx", 
+    skip = 2)
+
+human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+mouse = useMart("ensembl", dataset = "mmusculus_gene_ensembl")
+ 
+convertHumanGeneList <- function(x){
+ 
+genesV2 = getLDS(attributes = c("mgi_symbol"), filters = "mgi_symbol", values = x , mart = mouse, attributesL = c("hgnc_symbol"), martL = human, uniqueRows=T)
+ 
+humanx <- unique(genesV2[, 2])
+ 
+return(humanx)
+}
+ 
+genes <- convertHumanGeneList(GATA4DEGenes$`Gene  Symbol`)%>%
+  as.data.frame()%>%
+  set_colnames(c("Huamn Gene Symbol List"))
+
+genes%>%head()%>%pander()
+
+write.table(x = genes,file = "/media/awais/NewDrivewho/Downloads/HuamGATA4DEGenes",quote = FALSE,
+            append=FALSE, col.names = FALSE, row.names = FALSE)
+```

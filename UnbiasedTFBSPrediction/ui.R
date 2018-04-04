@@ -48,6 +48,8 @@ dashboardPage(
     
   
     tabPanel("Computational Prediction Componment", 
+             tags$style(type='text/css', ".selectize-input { font-size: 32px; line-height: 32px;} .selectize-dropdown { font-size: 28px; line-height: 28px; }"),
+             p("PWM/TFBSs Inputs"),
              box(title = "motifOverlapR Inputs",   
                checkboxInput("TypeInSequence", "Type In DNA Sequence", value =  FALSE),
                     conditionalPanel(
@@ -1145,20 +1147,28 @@ dashboardPage(
                                                                                                                        "ARALYDRAFT_495258",
                                                                                                                        "ARALYDRAFT_496250",
                                                                                                                        "ARALYDRAFT_493022",
-                                                                                                                       "ARALYDRAFT_484486"), selected= "Arx" )),
+                                                                                                                       "ARALYDRAFT_484486"), selected= "Arx"),
+                 numericInput(inputId= "MatchPercentage", label = "Match percentage of the PWM", value = 90, min = 0, max= 100)),
                
                     
-               checkboxInput("CustomPredictedSites", label = "Upload Computationally predicted TFBS", value = FALSE),
+               checkboxInput("CustomPredictedSites", label = "Upload pre-identifed TFBS", value = FALSE),
                conditionalPanel(
                  condition = "input.CustomPredictedSites == true",
                  fileInput("CustomPredictedSitesGenomicSites", "Upload bed file format of the predicted sites", multiple = FALSE)),
+               
+               
+               p("Promoter Lengths"),
+               checkboxInput("CustomPromoterLengths", label = "Define custom promoter regions", value = FALSE),
+               conditionalPanel(
+                 condition = "input.CustomPromoterLengths == true",
+               numericInput(inputId= "PromoterStart", label = "Promoter Start/
+                            Upstream of TSS", value = 2000, min = 0),
+               numericInput(inputId= "PromoterFinish", label = "Promoter End/
+                            DownStream of TSS", value = 200, min = 0)),
                     
                     
-                    numericInput(inputId= "MatchPercentage", label = "Match percentage of the PWM", value = 90, min = 0, max= 100),
                     
-                    
-                    
-                    
+                    p("Conservation Options"),
                     checkboxInput("Conserved", label = "Identify Motifs In Conserved Promoter regions", value = FALSE),
                     
                     
@@ -1290,17 +1300,16 @@ dashboardPage(
                                                                                                                    "Duodenum Mucosa"="E077",
                                                                                                                    "Skeletal Muscle Male"="E107",
                                                                                                                    "Stomach Mucosa"="E110"), multiple= FALSE, selected= "E009"),
+               
+               # Transcriptomic List
                     checkboxInput("DifferentialExpressedGenes", label = "Differentially expressed genes", value = FALSE),
-               
-               
-               
                     conditionalPanel(
                       condition = "input.DifferentialExpressedGenes == true",
-                      fileInput("differenitallyExpressedGenesList", "Upload a Differentially expressed list", multiple = FALSE)
-                    ),
+                      fileInput("differenitallyExpressedGenesList", "Upload a Differentially expressed list", multiple = FALSE)),
+               
+               # Action button
                     actionButton("ComputeTranscriptionFactorSites", "Computationally Predict Sites"), 
-          
-                    width = 4, height = 700),
+                    width = 4, height = 775),
              
              box(title = "Position Weight Matrix", 
              fluidRow(withSpinner(plotOutput("VisualizeTFMotif"),
@@ -1311,22 +1320,22 @@ dashboardPage(
              h3("Downloads"),
                  column( 3 ,
                          fluidRow(downloadButton('rawMotifPositions', 'Download all
-                                                 motifs')),
+                                                 TFBS')),
                          br(),
              
                  
-                 fluidRow(downloadButton('RegualtoryModuleMotifs', 'Download motifs 
+                 fluidRow(downloadButton('RegualtoryModuleMotifs', 'Download TFBS 
                                          in CRMs'))),
                  column(2),
                  
                  column( 3 ,
-                 fluidRow(downloadButton('returnObjectUnbaised', 'Download unbiased
-                                         TFBS')),
+                 fluidRow(downloadButton('returnObjectUnbaised', 'Download TFBS 
+                                         in active regions')),
                  br(),
                  
-                 fluidRow(downloadButton('ProcessedMotifPositions', 'Download the 
-                                          TFBS'))), 
-             collapsible = TRUE, width= 8, height = 700
+                 fluidRow(downloadButton('TranscriptomicFiltered', 'Download the 
+                                          Transcriptomic TFBS'))), 
+             collapsible = TRUE, width= 8, height = 775
              ),
              
   
