@@ -24,7 +24,7 @@ motifOverlapR contains 3 tabs as illustrated in the figure below
 1. The computational Pipeline
 2. The genome browser and motif Table
 3. Gene Ontology
-![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/motifOverlapRLayout.jpg)
+![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/ComputationalTab.jpg)
 
 #### The Computational Pipeline
 In the first tab is the computational pipeline and two data tables containing the results of the computational pipeline.
@@ -48,7 +48,7 @@ Input 4 - Select the cell type/Tissue type to predict the sites within This inpu
 Input 5 - Optional: Upload a list of genes that showed differential expression in the absence of the TF. This is an optional input whereby uploading a list of genes (in the gens symbols format) will limit predicted TFBS to regulatory modules (i.e. promoters and enhancers) that regulate genes that showed differential expression.
   
 
-![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/ComputationalTabResults.jpg)
+![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/motifOverlapRInputs.png)
 
 
 #### Results Tables
@@ -62,12 +62,12 @@ Both tables contain the following information:
 4.	The Gene regulated (as both a gene symbol and a UCSC transcript ID).
 
 
-![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/ComputationalTabResults.jpg)
+![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/ComputationalTab1.jpg)
 
 
 These Tables are filterable by each of these columns to select for specific motifs. 
 
-![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/ComputationalTabResultsFilterAbility.jpg)
+![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/ComputationalTab2.jpg)
 
 
 #### Genome Browser Tab/ Table
@@ -76,15 +76,15 @@ MotifOverlapR contains an inbuilt genome browser that contains the results of th
 
 The inputs for the genome browser are the genomic coordinates you wish to view and clicking go. Please be aware, this is computationally intensive hence requires a lot of ram. Thus, if you are running into issues, please try reducing the size of the region you're interrogating.
 
-![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/GenomeBrowserTabInputs.jpg)
+![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/GenomeBrowser.jpg)
 
 The predicted motif track correlates with the datatable below showing the information regarding these motifs.
 
-![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/GenomeBrowserTabPredictedSitesTable.jpg)
+![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/GenomeBrowser2.jpg)
 
 The colour of the Selected cell type track correlates with the chromHMM legend, informing you of the epigenomic state for each genomic region. This is illustrated in the figure where the dark green region correlates with active transcription and the red region is an active transcription start site.  
 
-![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/GenomeBrowserTabChromHMMLegend.jpg)
+![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/GenomeBrowser2.jpg)
 
 
 #### Gene Ontology Tab
@@ -93,7 +93,7 @@ motifOverlapR also contains a gene ontology tab that conducts an enrichment base
 
 Here, we can see many activating ontology terms for the Arnt transcription factor.
 
-![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/GeneOntologyTabResults.jpg)
+![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/GeneOntologyTab.jpg)
 
 
 
