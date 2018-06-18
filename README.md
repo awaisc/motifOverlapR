@@ -84,7 +84,7 @@ The predicted motif track correlates with the datatable below showing the inform
 
 The colour of the Selected cell type track correlates with the chromHMM legend, informing you of the epigenomic state for each genomic region. This is illustrated in the figure where the dark green region correlates with active transcription and the red region is an active transcription start site.  
 
-![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/GenomeBrowser2.jpg)
+![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/GenomeBrowser1.jpg)
 
 
 #### Gene Ontology Tab
