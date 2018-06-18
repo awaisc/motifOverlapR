@@ -27,25 +27,33 @@ motifOverlapR contains 3 tabs as illustrated in the figure below
 ![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/ComputationalTab.jpg)
 
 #### The Computational Pipeline
-In the first tab is the computational pipeline and two data tables containing the results of the computational pipeline.
+In the first table contains the motifOverlapR input, multiple download steps and the final highly-comprehensive table.
 There are 5 total inputs:
-Input 1 - the Position Weight Matrix to match to the genome. There are 3 separate options for this.
+Input 1: Motif and TFBS Inputs
+the Position Weight Matrix to match to the genome. There are 3 separate options for this.
   1.	Type in the DNA sequence (No spaces)
   2.	Upload a custom position weight matrix in the JASPAR format (including the header) in a csv format
   3.	Select an existing PWM matrix from the JASPAR database
+  4. Upload Pre-identified TFBS in the UCSC bed file format **without** any headers. Please see [here](https://genome.ucsc.edu/FAQ/FAQformat.html#format1) for more information on UCSC file structure
 
+With all PWM inputs there will be the option of how accurate you want the DNA sequence to match the PWM.  This a percentage where 100% is DNA-sequences that give a perfect score at every position of PWM, 50% returns DNA-sequences that score at least 50% of the maximum score. We would recommend examining your PWM and determining how stringently you would want. 
 
-Input 2. - How accurately you want the DNA sequence to match the position weight matrix selected. This is a numeric value from 1-100 whereby 100 will identify motifs that match the position weight matrix perfectly.
+Input 2: Advanced Cis Regulatory Module (Optional)
+Adjust the length of promoters. By default this is 2000bp upstream of the TSS and 200bp downstream however, this is adjustable.
 
+Another adjustable paramter here is the minimum correlation between an enhancer region and TSS. This will adjust how correlated the expression of the enhancer and the TSS are, the greater the correlation the more likely the two are interacting. By default this slider is set to 0 to include all enhancer-TSS assoications. 
 
-Input 3. - Identify motifs that are located in conserved promoter regions between vertebrate genomes. This is a checkbox that when selected will identify motifs that are in promoter regions that are falling into genomic regions that are completely conserved.
+Input 3: Conservation Data
+Identify motifs that are located in conserved promoter regions between vertebrate genomes. This is a checkbox that when selected will identify motifs that are in promoter regions that are falling into genomic regions that are completely conserved.
 Please be aware, this will download a 9GB file from UCSC that contains the PhyloP scores for the entire hg19 genome. Hence, this option may take hours to load the first time.
 
 
-Input 4 - Select the cell type/Tissue type to predict the sites within This input will determine the epigenomic environment for each cell type hence allowing us to identify which motifs are located in active chromatin regions and therefore accessible to the TF. Typically, this will be the cell type in which the TF is expressed.
+Input 4: Epigenomic Environment
+Select the cell type/Tissue type to predict the sites within This input will determine the epigenomic environment for each cell type hence allowing us to identify which motifs are located in active chromatin regions and therefore accessible to the TF. Typically, this will be the cell type in which the TF is expressed.
 
 
-Input 5 - Optional: Upload a list of genes that showed differential expression in the absence of the TF. This is an optional input whereby uploading a list of genes (in the gens symbols format) will limit predicted TFBS to regulatory modules (i.e. promoters and enhancers) that regulate genes that showed differential expression.
+Input 5: Transcriptomic (Optional)
+Upload a list of genes that showed differential expression in the absence of the TF. This is an optional input whereby uploading a list of genes (in the **gene symbol format** ) will limit predicted TFBS to regulatory modules (i.e. promoters and enhancers) that regulate genes that showed differential expression.
   
 
 ![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/motifOverlapRInputs.png)
@@ -53,19 +61,20 @@ Input 5 - Optional: Upload a list of genes that showed differential expression i
 
 #### Results Tables
 
-The raw results are illustrated as two tables based on the regulatory module they're found in: either promoters or enhancers.
+The final output is a single table. 
 Both tables contain the following information:
 
-1.	Genomic coordinates of the motif
-2.	The score of the motif according to the position weight matrix.
-3.	The DNA String
-4.	The Gene regulated (as both a gene symbol and a UCSC transcript ID).
+1.	Genomic coordinates of the TFBS
+2.  All metadata uploaded with the TFBS in the raw data
+3.	The CRM type it is located within
+4.  The chromatin state the TFBS is located within
+5.	The Gene regulated (as both a gene symbol and a UCSC transcript ID).
 
 
 ![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/ComputationalTab1.jpg)
 
 
-These Tables are filterable by each of these columns to select for specific motifs. 
+These tables are filterable by each of these columns to select for specific motifs. 
 
 ![](https://raw.githubusercontent.com/awaisc/motifOverlapR/master/ImagesForReadMe/ComputationalTab2.jpg)
 
