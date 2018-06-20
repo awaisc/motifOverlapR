@@ -1,5 +1,6 @@
 
-
+options(shiny.maxRequestSize = 200*1024^2, repos = BiocInstaller::biocinstallRepos())
+getOption("repos")
 
 ## Install all packages needed if packages not installed!!!!
 list.of.packages <- c("shiny", 
@@ -8,6 +9,7 @@ list.of.packages <- c("shiny",
                       "gridExtra", 
                       "Gviz",  
                       "GenomicInteractions",
+                      "GenomicAlignments",
                       "rtracklayer", 
                       "magrittr",
                       "parallel", 
@@ -48,9 +50,9 @@ dashboardPage(
     
   
     tabPanel("Computational Prediction Componment", 
-             tags$style(type='text/css', ".selectize-input { font-size: 32px; line-height: 32px;} .selectize-dropdown { font-size: 28px; line-height: 28px; }"),
-             p("PWM/TFBSs Inputs"),
-             box(title = "motifOverlapR Inputs",   
+           
+             box(
+               h4("Motif/TFBS Input"),
                checkboxInput("TypeInSequence", "Type In DNA Sequence", value =  FALSE),
                     conditionalPanel(
                       condition = "input.TypeInSequence == true",
@@ -63,10 +65,11 @@ dashboardPage(
                       fileInput("JasparCustomMatrix", "Upload Custom Jaspar Formated Position Weight Matrix", multiple = FALSE)
                     ),
                     
-                    checkboxInput("JasparDataBase", "Select Position Weight Matrix from Jaspar Database",value =  TRUE),
+                    checkboxInput("JasparDataBase", "Select Position Weight Matrix from Jaspar Database",value =  FALSE),
                     conditionalPanel(
                       condition = "input.JasparDataBase == true",
-                      selectizeInput(inputId= "TranscriptionFactorPWM", label = "Transcription Factor", choices = list("Arnt",
+                      fluidRow(
+                      column(4,selectizeInput(inputId= "TranscriptionFactorPWM", label = "Transcription Factor", choices = list("Arnt",
                                                                                                                        "Ahr::Arnt",
                                                                                                                        "br",
                                                                                                                        "br(var.2)",
@@ -1147,32 +1150,41 @@ dashboardPage(
                                                                                                                        "ARALYDRAFT_495258",
                                                                                                                        "ARALYDRAFT_496250",
                                                                                                                        "ARALYDRAFT_493022",
-                                                                                                                       "ARALYDRAFT_484486"), selected= "Arx"),
-                 numericInput(inputId= "MatchPercentage", label = "Match percentage of the PWM", value = 90, min = 0, max= 100)),
+                                                                                                                       "ARALYDRAFT_484486"), selected = "Arx")),
+                      column(4, numericInput(inputId= "MatchPercentage", label = "% Match of motif", value = 90, min = 0, max= 100)))),
                
                     
-               checkboxInput("CustomPredictedSites", label = "Upload pre-identifed TFBS", value = FALSE),
+               checkboxInput("CustomPredictedSites", label = "Upload pre-identifed TFBS", value = TRUE),
                conditionalPanel(
                  condition = "input.CustomPredictedSites == true",
                  fileInput("CustomPredictedSitesGenomicSites", "Upload bed file format of the predicted sites", multiple = FALSE)),
                
                
-               p("Promoter Lengths"),
-               checkboxInput("CustomPromoterLengths", label = "Define custom promoter regions", value = FALSE),
+               h4("Cis Regulatory module Options"),
+               checkboxInput("CustomPromoterLengths", label = "Advanced Cis Regulatory Module Options", value = FALSE),
                conditionalPanel(
                  condition = "input.CustomPromoterLengths == true",
-               numericInput(inputId= "PromoterStart", label = "Promoter Start/
-                            Upstream of TSS", value = 2000, min = 0),
-               numericInput(inputId= "PromoterFinish", label = "Promoter End/
-                            DownStream of TSS", value = 200, min = 0)),
+               fluidRow(
+                 #Promoter Option
+               column(2, numericInput(inputId= "PromoterStart", label = "Promoter Start/
+                            Upstream of TSS", value = 2000, min = 0, width = 100)),
+               
+               column(2,numericInput(inputId= "PromoterFinish", label = "Promoter End/
+                            DownStream of TSS", value = 200, min = 0, width= 100)),
+               # Enhancer Options
+               column(6, 
+                      sliderInput("correlationCutOff", "Minimum enhancer-promoter correlation score", 
+                                  min = 0, max= 1, value = 0))
+               )
+               ),
                     
                     
                     
-                    p("Conservation Options"),
+                    h4("Conservation Options"),
                     checkboxInput("Conserved", label = "Identify Motifs In Conserved Promoter regions", value = FALSE),
                     
                     
-                    
+               h4("Epigenomic Environment"),
                     selectizeInput("CellTypeToPredict", label = "Cell Type/ Epigenomic Environment",choices = list("H1 Cell Line"="E003",
                                                                                                                    "H1 BMP4 Derived Mesendoderm Cultured Cells"="E004",
                                                                                                                    "H1 BMP4 Derived Trophoblast Cultured Cells"="E005",
@@ -1302,40 +1314,51 @@ dashboardPage(
                                                                                                                    "Stomach Mucosa"="E110"), multiple= FALSE, selected= "E009"),
                
                # Transcriptomic List
+               h4("Transcriptomic Input"),
                     checkboxInput("DifferentialExpressedGenes", label = "Differentially expressed genes", value = FALSE),
                     conditionalPanel(
                       condition = "input.DifferentialExpressedGenes == true",
-                      fileInput("differenitallyExpressedGenesList", "Upload a Differentially expressed list", multiple = FALSE)),
+                      fileInput("differenitallyExpressedGenesList", "Upload differentially expressed gene symbol list", multiple = FALSE)),
                
                # Action button
                     actionButton("ComputeTranscriptionFactorSites", "Computationally Predict Sites"), 
-                    width = 4, height = 775),
+                    width = 4, height = 900),
              
              box(title = "Position Weight Matrix", 
-             fluidRow(withSpinner(plotOutput("VisualizeTFMotif"),
+             fluidRow(withSpinner(plotOutput("VisualizeTFMotif", width="90%", height = 600),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
                          color.background = getOption("spinner.color.background", default = "#FFFFFF"))),
                  br(),
-             h3("Downloads"),
+             h4("Downloads"),
+             fluidRow(
+               #Download buttons
                  column( 3 ,
-                         fluidRow(downloadButton('rawMotifPositions', 'Download all
-                                                 TFBS')),
-                         br(),
-             
-                 
-                 fluidRow(downloadButton('RegualtoryModuleMotifs', 'Download TFBS 
-                                         in CRMs'))),
-                 column(2),
-                 
-                 column( 3 ,
-                 fluidRow(downloadButton('returnObjectUnbaised', 'Download TFBS 
-                                         in active regions')),
-                 br(),
-                 
-                 fluidRow(downloadButton('TranscriptomicFiltered', 'Download the 
-                                          Transcriptomic TFBS'))), 
-             collapsible = TRUE, width= 8, height = 775
+                downloadButton('rawMotifPositions', 'Download all
+                                                 TFBS'),
+                
+                downloadButton('RegualtoryModuleMotifs', 'Download TFBS 
+                                         in CRMs'),
+                
+                downloadButton('returnObjectUnbaised', 'Download TFBS 
+                                         in active regions'), 
+                                  
+                downloadButton('TranscriptomicFiltered', 'Download the 
+                                          Transcriptomic TFBS')
+),
+               
+                   column( 8 ,
+                                    p("Download the unfiltered motifs or uploaded TFBS"), 
+                                    
+                                    p("Download the motifs/TFBS in CRMs"),
+                                    
+                                    p("Download the motifs/TFBS filtered for CRM and active chromatin states"), 
+                                    
+                                    p("Download the motifs/TFBS in CRM and active chromatin states regulating DE genes"))
+                
+
+                 ),
+             collapsible = TRUE, width= 8, height = 900
              ),
              
   
@@ -1353,7 +1376,7 @@ dashboardPage(
                  
                  numericInput("toM", "Finishing Base", value = 25038065),
                  
-                 selectInput("chrM", label = h3("Chromosome"),
+                 selectInput("chrM", label = h4("Chromosome"),
                              
                              choices = list("Chromosome 1" = "chr1",
                                             "Chromosome 2" = "chr2",
@@ -1380,6 +1403,11 @@ dashboardPage(
                                             "Chromosome X" = "chrX",
                                             "Chromosome Y" = "chrY"), selected = "chrX"),
                  actionButton("GenomeBrowserAction", "Refresh Genome Browser"),
+                 br(),
+                 
+                 # activate me later whne u get the server side running
+                 # downloadButton('SaveHighResGVIZImage', 'Save high-res image of genome browser'),
+                 # 
                  width = 3, height = 700),
              box( title = "Genome Browser", width = 9, collapsible = TRUE, height = 700,
              withSpinner(plotOutput("GenomeBrowser"),
@@ -1392,12 +1420,20 @@ dashboardPage(
                              type = getOption("spinner.type", default = 3),
                              color = getOption("spinner.color", default = "#0275D8"),
                              color.background = getOption("spinner.color.background", default = "#FFFFFF"))),
-             
-             box( title = "Predicted TFBS in Browser", collapsible = TRUE, width = 9,
+             box( title = "TFBS shown in browser", collapsible = TRUE, width = 9,
+             tabsetPanel(
+             tabPanel("Multi-omic filtered TFBS",
              withSpinner(dataTableOutput("DataTablePredictedSites"),
                          type = getOption("spinner.type", default = 3),
                          color = getOption("spinner.color", default = "#0275D8"),
-                         color.background = getOption("spinner.color.background", default = "#FFFFFF")))),
+                         color.background = getOption("spinner.color.background", default = "#FFFFFF"))),
+             tabPanel("Raw/ Non filtered TFBS",
+               withSpinner(dataTableOutput("DataTableRawSites"),
+                         type = getOption("spinner.type", default = 3),
+                         color = getOption("spinner.color", default = "#0275D8"),
+                         color.background = getOption("spinner.color.background", default = "#FFFFFF")))))
+             
+             ),
              
 
     
@@ -1406,7 +1442,7 @@ dashboardPage(
            
                  
                  actionButton("GeneOntology", "Re-compute Gene Ontology Results"),
-                 p("Click me if the transcription Factor or Cell type changes."),
+                 h4("Click me if the transcription Factor or Cell type changes."),
                  selectInput("OntologyType", "Gene Ontology Type", list("Molecular Function" = "MF",
                                                                         "Biological Processes" = "BP",
                                                                         "Cellular Component" = "CC"), 
@@ -1415,7 +1451,7 @@ dashboardPage(
                              selectize = TRUE),
                  sliderInput("GeneOntologyPValueCutOff", "Adjusted P value Cut off", min = 0, max= 1, value = 0.05),
                  sliderInput("GeneOntologyRawPvalue", "P value Cut off", min = 0, max= 1, value = 0.05),
-                 numericInput("GeneOntologyNumeric", label = "Minimum Number of Terms", value = 0),
+                 numericInput("GeneOntologyNumeric", label = "Minimum Number of DE genes in Term", value = 0),
                  
                  width= 3, height= 600),
              

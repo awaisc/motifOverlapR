@@ -6,6 +6,8 @@
 #
 #    http://shiny.rstudio.com/
 #
+options(shiny.maxRequestSize = 200*1024^2, repos = BiocInstaller::biocinstallRepos())
+getOption("repos")
 
 require(shiny)
 require(Gviz)
@@ -28,15 +30,12 @@ require(biomaRt)
 require(tibble)
 
 shinyServer(function(input, output) {
-
-  options(shiny.maxRequestSize = 200*1024^2)
-  
   ######################################################
   ## Querying the JASPAR data Base for the matrices and names of the TFs
   #######################################################
 
   JASPARR2016Matrices <- getMatrixSet(JASPAR2016, list() )
-  namedJasparDataBase<-lapply(1:length(JASPARR2016Matrices), function(x){
+  namedJasparDataBase <- lapply(1:length(JASPARR2016Matrices), function(x){
     names(JASPARR2016Matrices[x])<-JASPARR2016Matrices[[x]]@name
   })
 
@@ -79,7 +78,7 @@ shinyServer(function(input, output) {
       assign("matrixForMatching", TranscriptionFactor, .GlobalEnv)
 
 
-    }else {
+    } else {
 
       ## Rewrite this because some of these matrices dont have even numbers of nucelotides for eahc position #WTF
       # OKay so the issue appears to be with repeat numbers Eg 0.333333333333333333333. NOt sure how to deal with this.
@@ -97,24 +96,19 @@ shinyServer(function(input, output) {
   ###########################################################
   #### Data Inputs
   ###########################################################
-
-
-
-
-  # ########################################################
-  ### Using the TXDB object to make a Promoter Grange with Gene symbols instead of importing.
-  #Limited because it does not get every gene symbol name (inparticular those in the scaffolds)
-  ###########################################################
-  # GENEIDToSymbol <- cbind.data.frame(x[mappedkeys(org.Hs.egSYMBOL)])
-  #
-  # GeneIDDataFrame<-as.data.frame(Knownegne)
-  #
-  # GeneIDDataFrame$GENEID<-GeneIDDataFrame$GENEID%>%as.character()
-  #
-  # promoterTracks<-left_join(GeneIDDataFrame, GENEIDToSymbol,
-  #                                by= c("GENEID" ="gene_id"))%>%
-  #   makeGRangesFromDataFrame(., keep.extra.columns = TRUE)%>%promoters()
-  # mcols(promoterTracks) <- cbind.data.frame( "hg19.kgXref.geneSymbol" =mcols(promoterTracks)$symbol)
+  promoterTracks <- read.delim("../DataFiles/Gene Tracks/Human/hg19bedWithNames.bed.gz")%>%
+    makeGRangesFromDataFrame(
+      keep.extra.columns=TRUE,
+      ignore.strand=FALSE,
+      seqinfo=NULL,
+      seqnames.field="hg19.knownGene.chrom",
+      start.field= "hg19.knownGene.txStart",
+      end.field="hg19.knownGene.txEnd",
+      strand.field="hg19.knownGene.strand",
+      starts.in.df.are.0based=FALSE)%>%promoters()
+  
+  
+  assign("promoterTracks", promoterTracks, .GlobalEnv)
 
 
   #########################################################
@@ -124,7 +118,7 @@ shinyServer(function(input, output) {
 
   assign("ah", ah, .GlobalEnv)
 
-  EpigenoomicsConverter <- cbind.data.frame("H1 Cell Line"="E003",
+  EpigenomicsConverter <- cbind.data.frame("H1 Cell Line"="E003",
                                             "H1 BMP4 Derived Mesendoderm Cultured Cells"="E004",
                                             "H1 BMP4 Derived Trophoblast Cultured Cells"="E005",
                                             "H1 Derived Mesenchymal Stem Cells"="E006",
@@ -262,47 +256,51 @@ shinyServer(function(input, output) {
 
   assign("permissiveEnhancer", permissiveEnhancer, .GlobalEnv)
 
-  #Read in the table
-  EnhancerPromoterAssoications <- read_delim("../DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt.gz",
-                                            "\t", escape_double = FALSE, trim_ws = TRUE)
+#   #Read in the table
+#   EnhancerPromoterAssoications <- read_delim("../DataFiles/Enhancers Track/Human/hg19_enhancer_promoter_correlations_distances_cell_type.txt.gz",
+#                                             "\t", escape_double = FALSE, trim_ws = TRUE)
+# 
+#   assign("EnhancerPromoterAssoications", EnhancerPromoterAssoications, .GlobalEnv)
+# 
+# 
+# 
+#   PromotersAssoicatedWithEnhancers<-separate(EnhancerPromoterAssoications, col=promoter, into= c("promoter", "strand"), sep= ',')%>%
+#     separate(., col= promoter, into= c("chr", "start", "end"))%>%makeGRangesFromDataFrame(keep.extra.columns = TRUE)
+# 
+# 
+# 
+# 
+#   ## Convert Enhancer To Granges
+#   EnhancerGrangeWithTargets <- EnhancerPromoterAssoications$enhancer%>%GRanges()
+# 
+#   # Add everything to the metadata columns
+#   mcols(EnhancerGrangeWithTargets) <- PromotersAssoicatedWithEnhancers
+# 
+# 
+#   # Select for significant values only,
+#   EnhancerGrangeWithTargetsSiginificant <- subset(EnhancerGrangeWithTargets, `FDR`<0.05)
+# 
+#   # Generate a vector for targets of enhancers by overlapping promoter regions with promoter GRanges
+#   IntersectBetweenOverlappingPromoterRanges <- findOverlaps(EnhancerGrangeWithTargetsSiginificant$X, promoterTracks)
+# 
+#   # Subset for Grange for promoter tarcks by the hits from the findOverlaps vector above (this will also order it)
+#   GenesRegulatedByEnhancers <- as.data.frame(mcols(promoterTracks))[IntersectBetweenOverlappingPromoterRanges%>%subjectHits(),]
+# 
+#   # Subset the EnhancerGrange by the same vector (except the vector for this Grange) hence ordering them both in the same order
+#   EnhancersWithGeneTargetsGrange <- EnhancerGrangeWithTargetsSiginificant[IntersectBetweenOverlappingPromoterRanges%>%queryHits()]
+# 
+#   ## Combine them
+#   mcols(EnhancersWithGeneTargetsGrange) <- cbind.data.frame(mcols(EnhancersWithGeneTargetsGrange),GenesRegulatedByEnhancers)
+# 
+#   ## Removing the redudent data! (I had to use this due to dplyr not enjoying columns having the same name)
+#   mcols(EnhancersWithGeneTargetsGrange) <- mcols(EnhancersWithGeneTargetsGrange)[12:20]
+# 
+# saveRDS(EnhancersWithGeneTargetsGrange, "../DataFiles/Interactions/Human/EnhancerPromoterInteractionDataFrame.rds")
 
-  assign("EnhancerPromoterAssoications", EnhancerPromoterAssoications, .GlobalEnv)
 
+EnhancersWithGeneTargetsGrange <- readRDS("../DataFiles/Interactions/Human/EnhancerPromoterInteractionDataFrame.rds")
 
-
-  PromotersAssoicatedWithEnhancers<-separate(EnhancerPromoterAssoications, col=promoter, into= c("promoter", "strand"), sep= ',')%>%
-    separate(., col= promoter, into= c("chr", "start", "end"))%>%makeGRangesFromDataFrame(keep.extra.columns = TRUE)
-
-
-
-
-  ## Convert Enhancer To Granges
-  EnhancerGrangeWithTargets <- EnhancerPromoterAssoications$enhancer%>%GRanges()
-
-  # Add everything to the metadata columns
-  mcols(EnhancerGrangeWithTargets) <- PromotersAssoicatedWithEnhancers
-
-
-  # Select for significant values only, - inlcuding taking out the 0.0000 as im not confident they're legit.
-  EnhancerGrangeWithTargetsSiginificant <- subset(EnhancerGrangeWithTargets, `FDR`!=0 & `FDR`<0.05)
-
-  # Generate a vector for targets of enhancers by overlapping promoter regions with promoter GRanges
-  IntersectBetweenOverlappingPromoterRanges <- findOverlaps(EnhancerGrangeWithTargetsSiginificant$X, promoterTracks)
-
-  # Subset for Grange for promoter tarcks by the hits from the findOverlaps vector above (this will also order it)
-  GenesRegulatedByEnhancers <- as.data.frame(mcols(promoterTracks))[IntersectBetweenOverlappingPromoterRanges%>%subjectHits(),]
-
-  # Subset the EnhancerGrange by the same vector (except the vector for this Grange) hence ordering them both in the same order
-  EnhancersWithGeneTargetsGrange <- EnhancerGrangeWithTargetsSiginificant[IntersectBetweenOverlappingPromoterRanges%>%queryHits()]
-
-  ## Combine them
-  mcols(EnhancersWithGeneTargetsGrange) <- cbind.data.frame(mcols(EnhancersWithGeneTargetsGrange),GenesRegulatedByEnhancers)
-
-  ## Removing the redudent data! (I had to use this due to dplyr not enjoying columns having the same name)
-  mcols(EnhancersWithGeneTargetsGrange) <- mcols(EnhancersWithGeneTargetsGrange)[12:20]
-
-
-  #We can use this to identify gene targets of motifs in enhancer regions
+#We can use this to identify gene targets of motifs in enhancer regions
   assign("EnhancersWithGeneTargetsGrange", EnhancersWithGeneTargetsGrange, .GlobalEnv)
 
 
@@ -375,10 +373,6 @@ shinyServer(function(input, output) {
 
 
       #Data Pipeline
-
-
-      
-      
       ####### Custom Data import so users can adjust the promoter regions as they please
       
       #########Importing Bed File for the promoter regions with gene symbol names
@@ -399,13 +393,17 @@ shinyServer(function(input, output) {
       
       ###### If the user uploads a custom set of TFBS
   if(input$CustomPredictedSites==TRUE) {
+    
+    if(input$CustomPredictedSitesGenomicSites$datapath %>% is.null() ){
         
-        # Extract the file path for the uploaded object
-        CustomPredictedSitesPath <- input$CustomPredictedSitesGenomicSites$datapath
+       # Example DataFile!!
+      CustomPredictedSitesPath <- "ExampleFiles/ExampleCustomChIP-seqGATA4TFBS.bed"
         
-        GenomicPositions<- readr::read_delim(file = CustomPredictedSitesPath,
-                                                      "\t", escape_double = FALSE, col_names = FALSE, 
+        GenomicPositions <- readr::read_delim(file = CustomPredictedSitesPath,
+                                                      "\t", escape_double = FALSE,
+                                             col_names = FALSE, 
                                                       trim_ws = TRUE)%>%
+          dplyr::select(-c("X4","X5"))%>% # Remove the irrelevant columns just for the sake of the cleaning up the final datatable
           makeGRangesFromDataFrame(.,
                                    keep.extra.columns=TRUE, # Keep extra columns for additional info but there wont be colnames
                                    ignore.strand=FALSE,
@@ -415,9 +413,57 @@ shinyServer(function(input, output) {
                                    end.field= "X3",
                                    strand.field="X6",
                                    starts.in.df.are.0based=FALSE)
+        
+        seqlevelsStyle(GenomicPositions) <- "UCSC"
+        
         # Assigning to motif positions
         assign("genomicLocationOfMotifs", GenomicPositions, .GlobalEnv)
         
+    } else {
+      
+      CustomPredictedSitesPath <- input$CustomPredictedSitesGenomicSites$datapath
+      
+      # Extract the file path for the uploaded object
+      GenomicPositionsdf<- readr::read_delim(file = CustomPredictedSitesPath,
+                                           "\t", escape_double = FALSE,
+                                           col_names = FALSE, 
+                                           trim_ws = TRUE)%>%
+        mutate(width = X3-X2) # Generate a new column called width
+      
+      # Ensure all ranges are positive ranges and swap the start and stops for negative ranges
+      #Filter positive ranges and put them aside
+      PositiveRanges <-        filter(GenomicPositionsdf, width>=0)
+      
+      #Extract negative ranges
+      NegativeRanges <- filter(GenomicPositionsdf, width < 0)
+      #Save the start column of negative ranges
+      NegativeStartX2 <- NegativeRanges$X2
+      
+      #Replace start column of Negative range with end column
+      NegativeRanges$X2 <- NegativeRanges$X3
+      #Replace end column of negative range with start column thus resolving this issue
+      NegativeRanges$X3 <- NegativeStartX2
+      
+      # Generate the GRanges
+      GenomicPositions <- bind_rows(
+        PositiveRanges,
+        NegativeRanges)%>%
+        dplyr::select(-c("X4","X5","width"))%>% # Remove the irreleant columns just for the sake of the data
+        makeGRangesFromDataFrame(.,
+                                 keep.extra.columns=TRUE, # Keep extra columns for additional info but there wont be colnames as bed files dont have col names
+                                 ignore.strand=FALSE,
+                                 seqinfo=NULL,
+                                 seqnames.field= "X1", # Format based on UCSC bedfile names
+                                 start.field="X2",
+                                 end.field= "X3",
+                                 strand.field="X6",
+                                 starts.in.df.are.0based=FALSE)
+      
+      seqlevelsStyle(GenomicPositions) <- "UCSC"
+      
+      # Assigning to motif positions
+      assign("genomicLocationOfMotifs", GenomicPositions, .GlobalEnv)
+    }
         
       }  else {
         
@@ -435,7 +481,9 @@ shinyServer(function(input, output) {
 }
 
 
-
+      EnhancersWithGeneTargetsGrange <- subset(EnhancersWithGeneTargetsGrange, 
+                                               correlation >= input$correlationCutOff )
+      
       ### Identify which of these motifs are located in enhancer regions
       MotifsInEnhancers <- subsetByOverlaps(genomicLocationOfMotifs ,
                                             EnhancersWithGeneTargetsGrange)
@@ -568,7 +616,7 @@ shinyServer(function(input, output) {
 
       ## Name for the chromHMM Track Down Stream
 
-      NameOfCell <- subset(EpigenoomicsConverter, `Epigenomic Road Map`== CellTypeToPredict)$`Name Of Cell`
+      NameOfCell <- subset(EpigenomicsConverter, `Epigenomic Road Map`== CellTypeToPredict)$`Name Of Cell`
 
       assign("NameOfCell", NameOfCell, .GlobalEnv)
 
@@ -592,7 +640,7 @@ shinyServer(function(input, output) {
       UnbiasedPredictedMotifs <- lapply(MotifsInPromotersAndEnhancers,function(x){
 
 
-        OverlapBetweenRangesObject <- findOverlaps( x , ActiveChromatinRegions)
+        OverlapBetweenRangesObject <- findOverlaps( x, ActiveChromatinRegions)
 
         EpigenomicLocation <- ActiveChromatinRegions$name[OverlapBetweenRangesObject%>%subjectHits()]
 
@@ -625,7 +673,7 @@ shinyServer(function(input, output) {
                                                         "UCSC Transcript ID" = promoterTracks[OverlappingRangeOfMOtifsInPromoters%>%queryHits()]$hg19.kgXref.kgID)
 
 
-      ## Now lets get the promoters of genes regulated by motifs in enhancres
+      ## Now lets get the promoters of genes regulated by motifs in enhancers
       OverlappingRangeEnhancersMotifs <- findOverlaps(EnhancersWithGeneTargetsGrange, UnbiasedPredictedMotifs$Enhancers)
 
       EnhancerTargets <- cbind.data.frame(EnhancersWithGeneTargetsGrange$hg19.kgXref.geneSymbol,
@@ -649,9 +697,6 @@ shinyServer(function(input, output) {
 
 
       assign("UnbiasedMotifsPredicted", UnbiasedMotifsPredicted, .GlobalEnv)
-
-
-
 
 
       #######################################################
@@ -685,14 +730,7 @@ shinyServer(function(input, output) {
         returnObjectDifferentialSites <- c("Promoter Predicted Sites" = promoterTargetsOfTF,
                                            "Enhancer Predicted Sites" = enhancerTargetsOfTF)%>%unlist()
 
-        mcols(returnObjectDifferentialSites$`Promoter Predicted Sites`) <- cbind.data.frame(mcols(returnObjectDifferentialSites$`Promoter Predicted Sites`),
-                                                                                   "Regulatory Module" = rep("Promoter",
-                                                                                                             length(returnObjectDifferentialSites$`Promoter Predicted Sites`)))
-
-        mcols(returnObjectDifferentialSites$`Enhancer Predicted Sites`) <- cbind.data.frame(mcols(returnObjectDifferentialSites$`Enhancer Predicted Sites`),
-                                                                                   "Regulatory Module" = rep("Enhancer",
-                                                                                                             length(returnObjectDifferentialSites$`Enhancer Predicted Sites`)))
-
+  
         GenomeBrowserUnbiasedSites <- c(returnObjectDifferentialSites$`Promoter Predicted Sites`,
                                         returnObjectDifferentialSites$`Enhancer Predicted Sites`)%>%unlist()
 
@@ -712,13 +750,6 @@ shinyServer(function(input, output) {
 
         assign("returnObjectUnbaised", returnObjectUnbaised, .GlobalEnv)
 
-        mcols(returnObjectUnbaised$`Promoter Predicted Sites`) <- cbind.data.frame(mcols(returnObjectUnbaised$`Promoter Predicted Sites`),
-                                                                                   "Regulatory Module" = rep("Promoter",
-                                                                                                             length(returnObjectUnbaised$`Promoter Predicted Sites`)))
-
-        mcols(returnObjectUnbaised$`Enhancer Predicted Sites`) <- cbind.data.frame(mcols(returnObjectUnbaised$`Enhancer Predicted Sites`),
-                                                                                   "Regulatory Module" = rep("Enhancer",
-                                                                                                             length(returnObjectUnbaised$`Enhancer Predicted Sites`)))
 
         GenomeBrowserUnbiasedSites <- c(returnObjectUnbaised$`Promoter Predicted Sites`,
                                         returnObjectUnbaised$`Enhancer Predicted Sites`)%>%unlist()
@@ -789,7 +820,8 @@ shinyServer(function(input, output) {
     
 
 
-  output$ReducedTFBS <- downloadHandler('DeduplicatedFullyFilteredTFBS.bed', content = function(file) {
+  output$ReducedTFBS <- downloadHandler('DeduplicatedFullyFilteredTFBS.bed',
+                                        content = function(file) {
     
     write.table( PredictedTFBS%>%reduce()%>%as.data.frame(), file  ,
                  sep="\t",
@@ -832,10 +864,10 @@ shinyServer(function(input, output) {
         humanIdeogramTrack <- IdeogramTrack(chromosome = chr,
                                             genome="hg19",
                                             name= "Ideogram")
-
+        displayPars(humanIdeogramTrack) <- list(fontsize= 20)
         #Genome Axis Track for apprxoimate location
         gHumanTrack <- GenomeAxisTrack(name= "Genomic Axis Track")
-
+        displayPars(gHumanTrack) <- list(fontsize = 20)
         assign("humanIdeogramTrack", humanIdeogramTrack, .GlobalEnv)
         assign("gHumanTrack", gHumanTrack, .GlobalEnv)
 
@@ -852,29 +884,32 @@ shinyServer(function(input, output) {
                                       chromosome=input$chrM,
                                       showId=TRUE,
                                       geneSymbol=TRUE,
-                                      name="UCSC")
-
+                                      name="UCSC 
+                                      Known
+                                      Genes")
+        # Map the ids between symbol and entrezid
         symbols <- unlist(mapIds(org.Hs.eg.db, gene(knownGenes),
                                  "SYMBOL", "ENTREZID",
                                  multiVals = "first"))
-
+        #Map the ids
         symbol(knownGenes) <- symbols[gene(knownGenes)]
-
+        geneTrackChromosomeSpecific <- knownGenes
+        #Increase font size
+        displayPars(geneTrackChromosomeSpecific) <- list(fontsize.group = 20)
+        
         assign("knownGenes", knownGenes, .GlobalEnv)
-
+        assign("geneTrackChromosomeSpecific", geneTrackChromosomeSpecific, .GlobalEnv)
 
 
         #Promoter and Enhancer Tracks for each chormosome Track
         promotertrackChromosomeSpecific <- promoterTracks%>%subset(. ,
                                                                    seqnames==input$chrM)%>%AnnotationTrack(.,
-                                                                                                           name= "PromoterTrack",
+                                                                                                           name= "Promoters",
                                                                                                            genome="hg19")
         
         displayPars(promotertrackChromosomeSpecific) <- 
           list(fill = "red")
-        geneTrackChromosomeSpecific <- knownGenes
-
-
+        
 
         EnhancersHumanChromosomeSpecific <- reduce(c(reduce(permissiveEnhancer), reduce(EnhancersWithGeneTargetsGrange)))%>%
           subset(. ,
@@ -886,7 +921,6 @@ shinyServer(function(input, output) {
 
         assign("EnhancersHumanChromosomeSpecific", EnhancersHumanChromosomeSpecific, .GlobalEnv)
         assign("promotertrackChromosomeSpecific", promotertrackChromosomeSpecific, .GlobalEnv)
-        assign("geneTrackChromosomeSpecific", geneTrackChromosomeSpecific, .GlobalEnv)
 
         #Chromosome Specific Predicted Motifs
         PredictedTFBSTrack <- PredictedTFBS%>%subset(seqnames==input$chrM)%>%AnnotationTrack(genome = "hg19",
@@ -910,7 +944,7 @@ shinyServer(function(input, output) {
                                                                                                                           genome = "hg19",
                                                                                                                           stacking = "dense",
                                                                                                                           col.line="black",
-                                                                                                                          name="All Motif Instances")
+                                                                                                                          name="All TFBS")
         displayPars(RawMotifInstancesTrack) <-  list(fill = "grey")
         assign("RawMotifInstancesTrack", RawMotifInstancesTrack, .GlobalEnv)
 
@@ -938,11 +972,11 @@ shinyServer(function(input, output) {
                                 RawMotifInstancesTrack,
                                 geneTrackChromosomeSpecific,
                                 chromatinStatesTrack),
-                   sizes= c(1,1,3,1,1,1,1,3,3),
+                   sizes= c(1,1.5,3,1,1,1,1,3,3),
                    from =input$fromM,
                    to= input$toM,
                    chromosome= input$chrM,
-                   cex.title = 0.72,
+                   cex.title = 1,
                    rotation.title = 0,
                    showAxis = FALSE,
                    background.title = "white",
@@ -999,7 +1033,8 @@ shinyServer(function(input, output) {
                                       chromosome=input$chrM,
                                       showId=TRUE,
                                       geneSymbol=TRUE,
-                                      name="UCSC")
+                                      name="UCSC
+                                      Genes")
 
         symbols <- unlist(mapIds(org.Hs.eg.db, gene(knownGenes),
                                  "SYMBOL", "ENTREZID",
@@ -1013,7 +1048,7 @@ shinyServer(function(input, output) {
         #Promoter and Enhancer Tracks for each chormosome Track
         promotertrackChromosomeSpecific <- promoterTracks%>%subset(. ,
                                                                    seqnames==input$chrM)%>%AnnotationTrack(.,
-                                                                                                           name= "PromoterTrack",
+                                                                                                           name= "Promoters",
                                                                                                            genome="hg19")
         
         displayPars(promotertrackChromosomeSpecific) <- 
@@ -1083,11 +1118,11 @@ shinyServer(function(input, output) {
                                 RawMotifInstancesTrack,
                                 geneTrackChromosomeSpecific,
                                 chromatinStatesTrack),
-                   sizes= c(1,1,3,1,1,1,1,3,3),
+                   sizes= c(1,1.5,3,1,1,1,1,3,3),
                    from = input$fromM,
                    to= input$toM,
                    chromosome= input$chrM,
-                   cex.title = 0.72,
+                   cex.title = 1,
                    rotation.title = 0,
                    showAxis = FALSE,
                    background.title = "white",
@@ -1222,11 +1257,11 @@ shinyServer(function(input, output) {
                                 RawMotifInstancesTrack,
                                 geneTrackChromosomeSpecific,
                                 chromatinStatesTrack),
-                   sizes= c(1,1,3,1,1,1,1,3,3),
+                   sizes= c(1,1.5,3,1,1,1,1,3,3),
                    from =24500000,
                    to= 25000000,
                    chromosome= "chrX",
-                   cex.title = 0.72,
+                   cex.title = 1,
                    rotation.title = 0,
                    showAxis = FALSE,
                    background.title = "white",
@@ -1282,16 +1317,16 @@ shinyServer(function(input, output) {
                                 RawMotifInstancesTrack,
                                 geneTrackChromosomeSpecific,
                                 chromatinStatesTrack),
-                   sizes= c(1,1,3,1,1,1,1,3,3),
+                   sizes= c(1,1.5,3,1,1,1,1,3,3),
                    from =input$fromM,
                    to= input$toM,
                    chromosome= input$chrM,
-                   cex.title = 0.72,
+                   cex.title = 1,
                    rotation.title = 0,
                    showAxis = FALSE,
                    background.title = "white",
                    lwd.title = 2,
-                   title.width = 2,
+                   title.width = 1,
                    cex.main = 5,
                    col = NULL,
                    fontcolor.title = "black",
@@ -1306,8 +1341,11 @@ shinyServer(function(input, output) {
     RenderDataFrame <- subset(PredictedTFBS, start >= input$fromM & end <= input$toM & seqnames == input$chrM)%>%as.data.frame()
   }
   )
-
-
+  output$DataTableRawSites<- renderDataTable({
+    
+    RenderDataFrame <- subset(genomicLocationOfMotifs, start >= input$fromM & end <= input$toM & seqnames == input$chrM)%>%as.data.frame()
+  }
+  )
 
 
 
@@ -1320,7 +1358,7 @@ shinyServer(function(input, output) {
       src = "www/ChromatinStateLegend.png",
       contentType = "image/jpeg",
       alt = "Human/Epigenomics Road Map Legend",
-      width= 200,
+      width= 300,
       height= 400
     )
 
@@ -1329,8 +1367,38 @@ shinyServer(function(input, output) {
 
 
 
-  
-  
+  # No idea how to do this yet. Basically want to make it so you can export the Gviz image at a very high resolution but it is being trickky ticky tickey
+  # output$SaveHighResGVIZImage < downloadHandler('GenomeBrowserImage',
+  #                                               content = function(file) {
+  #                                                 tiff('test.tiff', units="in", width=5, height=5, res=300)
+  #                                                 #Gviz plot code
+  #                                                 highReso<- plotTracks(trackList =c(humanIdeogramTrack,
+  #                                                                         gHumanTrack,
+  #                                                                         IntearctionTrack,
+  #                                                                         EnhancersHumanChromosomeSpecific,
+  #                                                                         promotertrackChromosomeSpecific,
+  #                                                                         PredictedTFBSTrack,
+  #                                                                         RawMotifInstancesTrack,
+  #                                                                         geneTrackChromosomeSpecific,
+  #                                                                         chromatinStatesTrack),
+  #                                                            sizes= c(1,1.5,3,1,1,1,1,3,3),
+  #                                                            from =input$fromM,
+  #                                                            to= input$toM,
+  #                                                            chromosome= input$chrM,
+  #                                                            cex.title = 1,
+  #                                                            rotation.title = 0,
+  #                                                            showAxis = FALSE,
+  #                                                            background.title = "white",
+  #                                                            lwd.title = 2,
+  #                                                            title.width = 1,
+  #                                                            cex.main = 5,
+  #                                                            col = NULL,
+  #                                                            fontcolor.title = "black",
+  #                                                            legend=TRUE)
+  #                                                    })
+  # 
+  # 
+    
   
   
   
@@ -1341,17 +1409,18 @@ shinyServer(function(input, output) {
   #######################################
 
 
-  ## Biomart Object
-     human_mart <- biomaRt::useMart("ENSEMBL_MART_ENSEMBL",
-                                     dataset = "hsapiens_gene_ensembl")
+  # ## Biomart Object
+  #    human_mart <- biomaRt::useMart("ENSEMBL_MART_ENSEMBL",
+  #                                    dataset = "hsapiens_gene_ensembl")
+  # 
+  #     assign("human_mart", human_mart, .GlobalEnv)
+  # 
+  #     
+  #     ## Get the gene Ids for all Symbols 
+  #           uniservser <- getBM(attributes = c("ucsc", "entrezgene", "external_gene_name"),
+  #                         mart = human_mart)
 
-      assign("human_mart", human_mart, .GlobalEnv)
-
-      
-      ## Get the gene Ids for all Symbols 
-            uniservser <- getBM(attributes = c("ucsc", "entrezgene", "external_gene_name"),
-                          mart = human_mart)
-
+            uniservser <- readRDS("../DataFiles/Gene Tracks/Human/bioMartObject.rds")
       assign("uniservser", uniservser, .GlobalEnv)
 
       
@@ -1362,8 +1431,11 @@ shinyServer(function(input, output) {
   GeneOntology <- observe({
     
     
-
+# if the user clicks the button on the TF page
     input$GeneOntology
+
+    # If the user clicks the button on the home page of motifOverlapR
+    input$CustomPredictedSitesGenomicSites
     
 
     isolate({
@@ -1371,8 +1443,7 @@ shinyServer(function(input, output) {
       
 
       ## Gene List
-      geneListToConvert <- unique(c(as.character(UnbiasedMotifsPredicted$`Promoters With Gene Targets`$`UCSC Transcript ID`),
-                       as.character(UnbiasedMotifsPredicted$`Enhancers With Gene Targets`$`UCSC Transcript ID`)))
+      geneListToConvert <- unique(c(as.character(PredictedTFBS$`UCSC Transcript ID`)))
 
       assign("geneListToConvert", geneListToConvert, .GlobalEnv)
       
@@ -1414,12 +1485,12 @@ shinyServer(function(input, output) {
       
       GeneOntologyResultsSorted$`GO ID` <- quickGoHtmlButton
       
+      # Remove terms without a go id
+      GeneOntologyResultsSorted <- filter(GeneOntologyResultsSorted, `Number of DE Genes In Term` > 0)
       
 ########## Bon Fonerani P Value Adjustment
       
-      GeneOntologyResultsSorted$`Adj P Value` <- GeneOntologyResultsSorted$`P Value`*dim(filter(GeneOntologyResultsSorted, `Number of DE Genes In Term`>0 ))[1]
-      
-      GeneOntologyResultsSorted$`Adj P Value`[GeneOntologyResultsSorted$`Adj P Value`>=1] <-1
+      GeneOntologyResultsSorted$`Adjusted P Value (FDR)` <- p.adjust(GeneOntologyResultsSorted$`P Value`, "fdr")
       
       
       assign("GeneOntologyResultsSorted", GeneOntologyResultsSorted, .GlobalEnv)
@@ -1435,11 +1506,11 @@ shinyServer(function(input, output) {
 
 
       output$GeneOntologyTableResults <- renderDataTable({
-  
+        input$CustomPredictedSitesGenomicSites
         input$GeneOntology
         
   GeneTable <- filter(GeneOntologyResultsSorted, `Number of DE Genes In Term` >= input$GeneOntologyNumeric &
-           `Ontology Type` %in% input$OntologyType & `Adj P Value` <= input$GeneOntologyPValueCutOff & `P Value` <= input$GeneOntologyRawPvalue
+           `Ontology Type` %in% input$OntologyType & `Adjusted P Value (FDR)` <= input$GeneOntologyPValueCutOff & `P Value` <= input$GeneOntologyRawPvalue
          )
          
   GeneTable

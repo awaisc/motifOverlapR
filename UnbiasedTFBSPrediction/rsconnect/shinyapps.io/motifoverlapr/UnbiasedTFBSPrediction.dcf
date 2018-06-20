@@ -1,0 +1,13 @@
+name: UnbiasedTFBSPrediction
+title: UnbiasedTFBSPrediction
+username:
+account: motifoverlapr
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 351560
+bundleId: 1404269
+url: https://motifoverlapr.shinyapps.io/UnbiasedTFBSPrediction/
+when: 1527821697.86087
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData
