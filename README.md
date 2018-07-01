@@ -144,5 +144,11 @@ Lizio M, Harshbarger J, Shimoji H, Severin J, Kasukawa T, Sahin S, Abugessaisa I
 
 
 ## 5 Cite Us
+MotifOverlapR: multi-omic transcription factor binding site filtration and visualization
 
-Awais Choudhry, Jimmy Breen
+Transcription Factors, Multi-omic integration
+Awais Choudhry1,2, Stephen Martin Pederson2, Cheryl Shoubridge1 & Jimmy Breen1,2, *
+1 Robinson Research Institute, University of Adelaide
+2 University of Adelaide Bioinformatics Hub, School of Biological Science, University of Adelaide
+* Corresponding author: Jimmy Breen (jimmy.breen@adelaide.edu.au)
+
