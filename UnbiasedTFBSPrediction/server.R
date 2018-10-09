@@ -14,7 +14,7 @@ require(Gviz)
 require(GenomicInteractions)
 require(magrittr)
 require(TxDb.Hsapiens.UCSC.hg19.knownGene)
-require(org.Hs.eg.db)
+require(Homo.sapiens)
 require(BSgenome.Hsapiens.UCSC.hg19)
 require(readxl)
 require(dplyr)
@@ -1243,19 +1243,16 @@ EnhancersWithGeneTargetsGrange <- readRDS("../DataFiles/Interactions/Human/Enhan
       
       
       
-      if(!exists("chrM")){
+      if(!exists("chr")){
         
-        
-        GenomeBrowserTFMatrix <- matrixForMatching
-        
-        assign("GenomeBrowserTFMatrix", GenomeBrowserTFMatrix, .GlobalEnv)
+          
+        #Assign current TF matrix to global 
+          assign("GenomeBrowserTFMatrix", matrixForMatching, .GlobalEnv)
         
         
         ###############################################################################################
         ###Re run this code if the chromosome changes
         ##############################################################################################
-        
-        chr <- chrM
         
         # Ideogram Track
         humanIdeogramTrack <- IdeogramTrack(chromosome = chrM,
@@ -1398,11 +1395,8 @@ EnhancersWithGeneTargetsGrange <- readRDS("../DataFiles/Interactions/Human/Enhan
       } else if(!identical(matrixForMatching,GenomeBrowserTFMatrix)) {
         
         
-        
-        GenomeBrowserTFMatrix <- matrixForMatching
-        
-        assign("GenomeBrowserTFMatrix", GenomeBrowserTFMatrix, .GlobalEnv)
-        
+          # assign new tf matrix over the current to the global
+          assign("GenomeBrowserTFMatrix", matrixForMatching, .GlobalEnv)
         
         ###############################################################################################
         ###Genome browser part for when you change chromosomes
@@ -1544,10 +1538,8 @@ EnhancersWithGeneTargetsGrange <- readRDS("../DataFiles/Interactions/Human/Enhan
         ###Genome browser part for when you change chromosomes
         ##############################################################################################
         
-        chr <- chrM
-        
         # Ideogram Track
-        humanIdeogramTrack <- IdeogramTrack(chromosome = chr,
+        humanIdeogramTrack <- IdeogramTrack(chromosome = chrM,
                                             genome="hg19",
                                             name= "Ideogram")
         
