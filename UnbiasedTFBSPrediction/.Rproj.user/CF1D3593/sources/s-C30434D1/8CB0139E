@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1545929197016.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3586893029",
+    "id" : "8CB0139E",
+    "lastKnownWriteTime" : 1545997493,
+    "last_content_update" : 1545997493640,
+    "path" : "~/GitHub/motifOverlapR/UnbiasedTFBSPrediction/server.R",
+    "project_path" : "server.R",
+    "properties" : {
+        "cursorPosition" : "2101,11",
+        "scrollLine" : "2080"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
