@@ -1947,10 +1947,10 @@ EnhancersWithGeneTargetsGrange <- readRDS("../DataFiles/Interactions/Human/Enhan
 
 
 # export Gviz "Screen shot" that can be downloaded
-   output$SaveHighResGVIZImage <- downloadHandler('GenomeBrowserImage',
-                                                content = function(file) {
+   output$SaveHighResGVIZImage <- downloadHandler('GenomeBrowserImage.tiff',
+                                                content = function(con) {
                                                   
-                                                  tiff(filename = paste0(file, ".tiff"),
+                                                  tiff(filename = con,
                                                        width = 3400, height = 1600,
                                                        units = "px", pointsize = 12,
                                                        compression = c("none"),
@@ -1967,9 +1967,9 @@ EnhancersWithGeneTargetsGrange <- readRDS("../DataFiles/Interactions/Human/Enhan
                                                                           geneTrackChromosomeSpecific,
                                                                           chromatinStatesTrack),
                                                              sizes= c(1,1.5,3,1,1,1,1,3,3),
-                                                             from =input$fromM,
-                                                             to= input$toM,
-                                                             chromosome= input$chrM,
+                                                             from =fromM,
+                                                             to= toM,
+                                                             chromosome= chrM,
                                                              cex.title = 1,
                                                              rotation.title = 0,
                                                              showAxis = FALSE,
@@ -1980,8 +1980,8 @@ EnhancersWithGeneTargetsGrange <- readRDS("../DataFiles/Interactions/Human/Enhan
                                                              col = NULL,
                                                              fontcolor.title = "black",
                                                              legend=TRUE)
-                                                  
                                                   dev.off()
+                                             
                                                      })
 
 
